@@ -1,10 +1,13 @@
 
 #include <ArduinoBLE.h>
 
-#define BLE_PERIPHERAL_NAME "IR-Tx"
-#define BLE_SERVICE_UUID "ABCD"
+#define BLE_PERIPHERAL_NAME "IRTx"
+#define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 
+// status LED should be flashing when not connected to peripheral device
+// and on when connected
+const int statusLedPin = LED_BUILTIN;
 const int buttonPin = 2;
 const int buzzerPin = 9;
 
@@ -12,39 +15,46 @@ int oldBtnState = LOW;
 long lastTimePushed = 0;
 const int pushInterval = 2000; // 2 seconds
 
-void setup() {
-  Serial.begin(9600);
-  while (!Serial);
+int statusLedState = LOW;
+long statusLedMillis = 0;
+const int statusLedInterval = 500;
 
-  Serial.print(F("--- Trigger ---\n"));
-  Serial.print(F("---------------\n"));
+void setup()
+{
+  Serial.begin(9600);
+  // while (!Serial);
+
+  Serial.println(F("--------------- Trigger ---------------"));
+  Serial.println(F("---------------------------------------"));
+  Serial.println();
 
   pinMode(buttonPin, INPUT);
   pinMode(buzzerPin, OUTPUT);
-
+  pinMode(statusLedPin, OUTPUT);
   // initialize the BLE hardware
   BLE.begin();
-
   // start scanning for peripherals
   BLE.scanForUuid(BLE_SERVICE_UUID);
 }
 
-void loop() {
-  
+void loop()
+{
+  blinkStatusLED();
   // testButton();
 
   // check if a peripheral has been discovered
   BLEDevice peripheral = BLE.available();
 
   if (peripheral) {
-    // discovered a peripheral, print out address, local name, and advertised service
-    Serial.print(F("Found "));
+    // discovered a peripheral, print out address, local name, and advertised
+    // service
+    Serial.println(F("Found "));
     Serial.print(peripheral.address());
     Serial.print(F(" '"));
     Serial.print(peripheral.localName());
-    Serial.print(F("' "));
+    Serial.println(F("' "));
     Serial.print(peripheral.advertisedServiceUuid());
-    Serial.print(F("\n"));
+    Serial.println();
 
     if (peripheral.localName() != BLE_PERIPHERAL_NAME) {
       return;
@@ -57,11 +67,11 @@ void loop() {
 
     // peripheral disconnected, start scanning again
     BLE.scanForUuid(BLE_SERVICE_UUID);
-  } 
-  
+  }
 }
 
-void controlLed(BLEDevice peripheral) {
+void controlLed(BLEDevice peripheral)
+{
   // connect to the peripheral
   Serial.print(F("Connecting...\n"));
 
@@ -98,47 +108,64 @@ void controlLed(BLEDevice peripheral) {
   int isConnected = -1;
   while (peripheral.connected()) {
     // while the peripheral is connected
-    if (isConnected == -1){
+    if (isConnected == -1) {
       isConnected = 1;
+      digitalWrite(statusLedPin, HIGH);
     }
-    
+
     long now = millis();
     int newBtnState = digitalRead(buttonPin);
-    if (newBtnState == HIGH && oldBtnState != newBtnState && (now - lastTimePushed > pushInterval)) {
+    if (newBtnState == HIGH && oldBtnState != newBtnState &&
+        (now - lastTimePushed > pushInterval)) {
       Serial.println(">>> Button pushed");
       characteristic.writeValue((byte)0x01);
       playTune();
       lastTimePushed = now;
     }
     oldBtnState = newBtnState;
-  
-    
   }
 
   Serial.println("Peripheral disconnected");
 }
 
-
-void testButton() {
+void testButton()
+{
   long now = millis();
-    int newBtnState = digitalRead(buttonPin);
-    if (newBtnState == HIGH && oldBtnState != newBtnState && (now - lastTimePushed > pushInterval)) {
-      Serial.println(">>> Button pushed");
-      // characteristic.writeValue((byte)0x01);
-      playTune();
-      lastTimePushed = now;
-    }
-    oldBtnState = newBtnState;
+  int newBtnState = digitalRead(buttonPin);
+  if (newBtnState == HIGH && oldBtnState != newBtnState &&
+      (now - lastTimePushed > pushInterval)) {
+    Serial.println(">>> Button pushed");
+    // characteristic.writeValue((byte)0x01);
+    playTune();
+    lastTimePushed = now;
+  }
+  oldBtnState = newBtnState;
 }
 
-void playTune() {
-      tone(buzzerPin, 1000);
-      delay(300);
-      tone(buzzerPin, 1200); 
-      delay(200);
-      tone(buzzerPin, 1500); 
-      delay(200);
-      tone(buzzerPin, 1000); 
-      delay(400);
-      noTone(buzzerPin);
+void blinkStatusLED()
+{
+  int now = millis();
+  if (now - statusLedMillis > statusLedInterval) {
+    statusLedMillis = now;
+    if (statusLedState == HIGH) {
+      digitalWrite(statusLedPin, LOW);
+      statusLedState = LOW;
+    } else {
+      digitalWrite(statusLedPin, HIGH);
+      statusLedState = HIGH;
+    }
+  }
+}
+
+void playTune()
+{
+  tone(buzzerPin, 1000);
+  delay(300);
+  tone(buzzerPin, 1200);
+  delay(200);
+  tone(buzzerPin, 1500);
+  delay(200);
+  tone(buzzerPin, 1000);
+  delay(400);
+  noTone(buzzerPin);
 }
