@@ -118,8 +118,10 @@ void controlLed(BLEDevice peripheral)
     if (newBtnState == HIGH && oldBtnState != newBtnState &&
         (now - lastTimePushed > pushInterval)) {
       Serial.println(">>> Button pushed");
-      characteristic.writeValue((byte)0x01);
-      playTune();
+      int written = characteristic.writeValue((byte)0x01);
+      if (written) {
+        playTune();
+      }
       lastTimePushed = now;
     }
     oldBtnState = newBtnState;

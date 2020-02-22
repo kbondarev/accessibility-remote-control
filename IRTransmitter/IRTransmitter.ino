@@ -1,6 +1,7 @@
 #include <ArduinoBLE.h>
 #include <SPI.h>
 #include <WiFiNINA.h>
+#include <IRremote.h>
 
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
@@ -9,6 +10,8 @@
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 #define WIFI_SSID "IR-Tx"
+
+IRsend irsend(9);
 
 BLEService irService(BLE_SERVICE_UUID);
 BLEUnsignedShortCharacteristic remoteChar(BLE_CHAR, BLERead | BLEWrite);
@@ -29,6 +32,9 @@ long bleStatusLedPrevMillis = 0; // last time LED was toggled
 const int bleStatusLedInterval = 700;
 
 bool isCentralConnected = false;
+
+unsigned int  rawData1[67] = {9100,4550, 600,550, 600,1650, 600,1700, 600,550, 550,550, 600,550, 600,550, 600,1700, 600,1650, 600,550, 600,1700, 600,500, 600,550, 600,550, 600,550, 600,550, 600,1650, 600,1700, 600,1700, 550,1700, 600,550, 600,550, 600,550, 600,550, 550,550, 600,550, 600,550, 600,550, 600,1650, 600,1700, 600,1700, 550,1700, 600};  // NEC 61A0F00F
+unsigned int  rawData2[3] = {9100,2250, 600};  // NEC FFFFFFFF
 
 void setup()
 {
@@ -61,7 +67,7 @@ void loop()
       Serial.print(F("Device connected: "));
       Serial.println(central.address());
       isCentralConnected = true;
-    } else {
+    } else if (!central.connected()) {
       Serial.print(F("Device disconnected: "));
       Serial.println(central.address());
       isCentralConnected = false;
@@ -125,10 +131,14 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     digitalWrite(bleRxLedPin, bleRxLedState);
     bleRxLedPreviousMillis = currentMillis;
 
+    
     int cmd = buf[0];
     switch (cmd) {
     case TV_POWER:
       Serial.print("TV_POWER");
+      irsend.sendRaw(rawData1, sizeof(rawData1) / sizeof(rawData1[0]), 38);
+      delay(100);
+      irsend.sendRaw(rawData2, sizeof(rawData2) / sizeof(rawData2[0]), 38);
       break;
     case DVD_POWER:
       Serial.print("DVD_POWER");
