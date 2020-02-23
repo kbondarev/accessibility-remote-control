@@ -6,12 +6,22 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
+#define DEBUG  0
+
+#if DEBUG
+#	define DBG_PRINT(...)    Serial.print(__VA_ARGS__)
+#	define DBG_PRINTLN(...)  Serial.println(__VA_ARGS__)
+#else
+#	define DBG_PRINT(...)
+#	define DBG_PRINTLN(...)
+#endif
+
 #define BLE_NAME "IRTx"
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 #define WIFI_SSID "IR-Tx"
 
-IRsend irsend(9);
+IRsend irsend(3);
 
 BLEService irService(BLE_SERVICE_UUID);
 BLEUnsignedShortCharacteristic remoteChar(BLE_CHAR, BLERead | BLEWrite);
@@ -33,17 +43,14 @@ const int bleStatusLedInterval = 700;
 
 bool isCentralConnected = false;
 
-unsigned int  rawData1[67] = {9100,4550, 600,550, 600,1650, 600,1700, 600,550, 550,550, 600,550, 600,550, 600,1700, 600,1650, 600,550, 600,1700, 600,500, 600,550, 600,550, 600,550, 600,550, 600,1650, 600,1700, 600,1700, 550,1700, 600,550, 600,550, 600,550, 600,550, 550,550, 600,550, 600,550, 600,550, 600,1650, 600,1700, 600,1700, 550,1700, 600};  // NEC 61A0F00F
-unsigned int  rawData2[3] = {9100,2250, 600};  // NEC FFFFFFFF
-
 void setup()
 {
   Serial.begin(9600);
   delay(5000);
 
-  Serial.println(F("------------ IR Transmitter ------------"));
-  Serial.println(F("----------------------------------------"));
-  Serial.println();
+  DBG_PRINTLN(F("------------ IR Transmitter ------------"));
+  DBG_PRINTLN(F("----------------------------------------"));
+  DBG_PRINTLN();
 
   pinMode(bleRxLedPin, OUTPUT);
   pinMode(bleStatusLedPin, OUTPUT);
@@ -64,12 +71,12 @@ void loop()
   BLEDevice central = BLE.central();
   if (central) {
     if (!isCentralConnected && central.connected()) {
-      Serial.print(F("Device connected: "));
-      Serial.println(central.address());
+      DBG_PRINT(F("Device connected: "));
+      DBG_PRINTLN(central.address());
       isCentralConnected = true;
     } else if (!central.connected()) {
-      Serial.print(F("Device disconnected: "));
-      Serial.println(central.address());
+      DBG_PRINT(F("Device disconnected: "));
+      DBG_PRINTLN(central.address());
       isCentralConnected = false;
     }
   }
@@ -83,7 +90,7 @@ void loop()
 void initializeBLE()
 {
   while (!BLE.begin()) {
-    Serial.println("Starting BLE failed!");
+    DBG_PRINTLN("Starting BLE failed!");
     delay(3000); // wait 3 seconds
   }
 
@@ -107,11 +114,11 @@ void initializeBLE()
 
 void printBLEStatus()
 {
-  Serial.println("\nBLE Peripheral is ready!");
-  Serial.println("\tBLE_NAME:\t" + String(BLE_NAME));
-  Serial.println("\tSERVICE_UUID:\t" + String(BLE_SERVICE_UUID));
-  Serial.println("\tCHARACTERISTIC:\t" + String(BLE_CHAR));
-  Serial.println("\t\t\t(value size: " + String(remoteChar.valueSize()) +
+  DBG_PRINTLN("\nBLE Peripheral is ready!");
+  DBG_PRINTLN("\tBLE_NAME:\t" + String(BLE_NAME));
+  DBG_PRINTLN("\tSERVICE_UUID:\t" + String(BLE_SERVICE_UUID));
+  DBG_PRINTLN("\tCHARACTERISTIC:\t" + String(BLE_CHAR));
+  DBG_PRINTLN("\t\t\t(value size: " + String(remoteChar.valueSize()) +
                  " bytes)");
 }
 
@@ -124,33 +131,34 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     characteristic.readValue(buf, characteristic.valueLength());
 
     printBuffer(buf, characteristic.valueLength());
-    Serial.print(">>> Command Received: ");
+    DBG_PRINT(">>> Command Received: ");
 
     // turn on the LED when receving signal
     bleRxLedState = HIGH;
     digitalWrite(bleRxLedPin, bleRxLedState);
     bleRxLedPreviousMillis = currentMillis;
 
-    
     int cmd = buf[0];
     switch (cmd) {
     case TV_POWER:
-      Serial.print("TV_POWER");
-      irsend.sendRaw(rawData1, sizeof(rawData1) / sizeof(rawData1[0]), 38);
-      delay(100);
-      irsend.sendRaw(rawData2, sizeof(rawData2) / sizeof(rawData2[0]), 38);
+      DBG_PRINT("TV_POWER");
+      irsend.sendNEC(0x61A0F00F, 32);
+      delay(40);
+      irsend.sendNEC(0xFFFFFFFF, 32);
+      delay(40);
+      irsend.sendNEC(0xFFFFFFFF, 32);
       break;
     case DVD_POWER:
-      Serial.print("DVD_POWER");
+      DBG_PRINT("DVD_POWER");
       break;
     default:
-      Serial.print("UNKNOWN!");
+      DBG_PRINT("UNKNOWN!");
       break;
     }
 
-    Serial.print("\t[");
-    Serial.print(cmd); // print decimal value
-    Serial.println("]");
+    DBG_PRINT("\t[");
+    DBG_PRINT(cmd); // print decimal value
+    DBG_PRINTLN("]");
   }
 }
 
@@ -159,7 +167,7 @@ void initializeWifi()
   WiFi.config(ipAddress);
   wifiStatus = WiFi.beginAP(WIFI_SSID);
   while (wifiStatus != WL_AP_LISTENING) {
-    Serial.println("Creating access point failed!");
+    DBG_PRINTLN("Creating access point failed!");
     delay(3000); // wait 3 seconds
   }
 
@@ -172,16 +180,16 @@ void initializeWifi()
 
 void printWifiStatus()
 {
-  Serial.println("\nWiFi AP is ready!");
+  DBG_PRINTLN("\nWiFi AP is ready!");
 
   // print the SSID of the network you're attached to:
-  Serial.print("\tSSID:\t");
-  Serial.println(WiFi.SSID());
+  DBG_PRINT("\tSSID:\t");
+  DBG_PRINTLN(WiFi.SSID());
 
   // print your WiFi shield's IP address:
   IPAddress ip = WiFi.localIP();
-  Serial.print("\tIP Address:\t");
-  Serial.println(ip);
+  DBG_PRINT("\tIP Address:\t");
+  DBG_PRINTLN(ip);
 }
 
 void handleWifiConnections()
@@ -191,18 +199,18 @@ void handleWifiConnections()
     wifiStatus = WiFi.status();
     if (wifiStatus == WL_AP_CONNECTED) {
       // a device has connected to the AP
-      Serial.println("Device connected to AP");
+      DBG_PRINTLN("Device connected to AP");
     } else {
       // a device has disconnected from the AP, and we are back in listening
       // mode
-      Serial.println("Device disconnected from AP");
+      DBG_PRINTLN("Device disconnected from AP");
     }
   }
 
   WiFiClient client = server.available(); // listen for incoming clients
 
   if (client) {                   // if you get a client,
-    Serial.println("new client"); // print a message out the serial port
+    DBG_PRINTLN("new client"); // print a message out the serial port
     String currentLine =
         ""; // make a String to hold incoming data from the client
     int found = 0;
@@ -238,22 +246,22 @@ void handleWifiConnections()
         }
 
         if (currentLine.endsWith("&")) {
-          Serial.println("!!!!!");
+          DBG_PRINTLN("!!!!!");
 
           found = currentLine.lastIndexOf("&", sizeof(currentLine));
           if (found == -1) {
             found = currentLine.lastIndexOf("?", sizeof(currentLine));
           }
-          Serial.print(found);
+          DBG_PRINT(found);
           String s = currentLine.substring(
               found, currentLine.lastIndexOf("&", found + 1));
-          Serial.println(s);
+          DBG_PRINTLN(s);
         }
       }
     }
     // close the connection:
     client.stop();
-    Serial.println("client disconnected");
+    DBG_PRINTLN("client disconnected");
   }
 }
 
@@ -282,16 +290,16 @@ void handleStatusLED()
 
 void printBuffer(byte *buf, int len)
 {
-  Serial.print("\n\t{");
+  DBG_PRINT("\n\t{");
   for (int i = 0; i < len; i++) {
     if (buf[i] < 0x10) {
       // print a leading zero
-      Serial.print("0");
+      DBG_PRINT("0");
     }
-    Serial.print(buf[i], HEX);
+    DBG_PRINT(buf[i], HEX);
     if (i < len - 1) {
-      Serial.print(" ");
+      DBG_PRINT(" ");
     }
   }
-  Serial.println("}");
+  DBG_PRINTLN("}");
 }
