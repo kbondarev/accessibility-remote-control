@@ -5,6 +5,16 @@
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 
+#define DEBUG  0
+
+#if DEBUG
+#	define DBG_PRINT(...)    Serial.print(__VA_ARGS__)
+#	define DBG_PRINTLN(...)  Serial.println(__VA_ARGS__)
+#else
+#	define DBG_PRINT(...)
+#	define DBG_PRINTLN(...)
+#endif
+
 // status LED should be flashing when not connected to peripheral device
 // and on when connected
 const int statusLedPin = LED_BUILTIN;
@@ -22,11 +32,10 @@ const int statusLedInterval = 500;
 void setup()
 {
   Serial.begin(9600);
-  // while (!Serial);
 
-  Serial.println(F("--------------- Trigger ---------------"));
-  Serial.println(F("---------------------------------------"));
-  Serial.println();
+  DBG_PRINTLN(F("--------------- Trigger ---------------"));
+  DBG_PRINTLN(F("---------------------------------------"));
+  DBG_PRINTLN();
 
   pinMode(buttonPin, INPUT);
   pinMode(buzzerPin, OUTPUT);
@@ -48,13 +57,13 @@ void loop()
   if (peripheral) {
     // discovered a peripheral, print out address, local name, and advertised
     // service
-    Serial.println(F("Found "));
-    Serial.print(peripheral.address());
-    Serial.print(F(" '"));
-    Serial.print(peripheral.localName());
-    Serial.println(F("' "));
-    Serial.print(peripheral.advertisedServiceUuid());
-    Serial.println();
+    DBG_PRINTLN(F("Found "));
+    DBG_PRINT(peripheral.address());
+    DBG_PRINT(F(" '"));
+    DBG_PRINT(peripheral.localName());
+    DBG_PRINTLN(F("' "));
+    DBG_PRINT(peripheral.advertisedServiceUuid());
+    DBG_PRINTLN();
 
     if (peripheral.localName() != BLE_PERIPHERAL_NAME) {
       return;
@@ -73,21 +82,21 @@ void loop()
 void controlLed(BLEDevice peripheral)
 {
   // connect to the peripheral
-  Serial.print(F("Connecting...\n"));
+  DBG_PRINT(F("Connecting...\n"));
 
   if (peripheral.connect()) {
-    Serial.print(F("Connected\n"));
+    DBG_PRINT(F("Connected\n"));
   } else {
-    Serial.print(F("Failed to connect!\n"));
+    DBG_PRINT(F("Failed to connect!\n"));
     return;
   }
 
   // discover peripheral attributes
-  Serial.println("Discovering attributes ...");
+  DBG_PRINTLN("Discovering attributes ...");
   if (peripheral.discoverAttributes()) {
-    Serial.println("Attributes discovered");
+    DBG_PRINTLN("Attributes discovered");
   } else {
-    Serial.println("Attribute discovery failed!");
+    DBG_PRINTLN("Attribute discovery failed!");
     peripheral.disconnect();
     return;
   }
@@ -96,11 +105,11 @@ void controlLed(BLEDevice peripheral)
   BLECharacteristic characteristic = peripheral.characteristic(BLE_CHAR);
 
   if (!characteristic) {
-    Serial.println("Peripheral does not the characteristic!");
+    DBG_PRINTLN("Peripheral does not the characteristic!");
     peripheral.disconnect();
     return;
   } else if (!characteristic.canWrite()) {
-    Serial.println("Peripheral does not have a writable characteristic!");
+    DBG_PRINTLN("Peripheral does not have a writable characteristic!");
     peripheral.disconnect();
     return;
   }
@@ -117,7 +126,7 @@ void controlLed(BLEDevice peripheral)
     int newBtnState = digitalRead(buttonPin);
     if (newBtnState == HIGH && oldBtnState != newBtnState &&
         (now - lastTimePushed > pushInterval)) {
-      Serial.println(">>> Button pushed");
+      DBG_PRINTLN(">>> Button pushed");
       int written = characteristic.writeValue((byte)0x01);
       if (written) {
         playTune();
@@ -127,7 +136,7 @@ void controlLed(BLEDevice peripheral)
     oldBtnState = newBtnState;
   }
 
-  Serial.println("Peripheral disconnected");
+  DBG_PRINTLN("Peripheral disconnected");
 }
 
 void testButton()
@@ -136,7 +145,7 @@ void testButton()
   int newBtnState = digitalRead(buttonPin);
   if (newBtnState == HIGH && oldBtnState != newBtnState &&
       (now - lastTimePushed > pushInterval)) {
-    Serial.println(">>> Button pushed");
+    DBG_PRINTLN(">>> Button pushed");
     // characteristic.writeValue((byte)0x01);
     playTune();
     lastTimePushed = now;
