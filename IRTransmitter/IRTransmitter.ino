@@ -46,7 +46,6 @@ bool isCentralConnected = false;
 void setup()
 {
   Serial.begin(9600);
-  delay(5000);
 
   DBG_PRINTLN(F("------------ IR Transmitter ------------"));
   DBG_PRINTLN(F("----------------------------------------"));
