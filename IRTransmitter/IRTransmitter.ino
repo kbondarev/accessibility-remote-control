@@ -6,7 +6,7 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define DEBUG  0
+#define DEBUG  1
 
 #if DEBUG
 #	define DBG_PRINT(...)    Serial.print(__VA_ARGS__)
@@ -141,6 +141,7 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     switch (cmd) {
     case TV_POWER:
       DBG_PRINT("TV_POWER");
+      // THIS CASE BLOCK IS EXECUTED WHEN BUTTON IS PUSHED ON THE TRIGGER DEVICE!
       irsend.sendNEC(0x61A0F00F, 32);
       delay(40);
       irsend.sendNEC(0xFFFFFFFF, 32);
