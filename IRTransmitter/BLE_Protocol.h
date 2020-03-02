@@ -7,7 +7,7 @@
 #ifndef BLE_Protocol_h
 #define BLE_Protocol_h
 
-#define TV_POWER (0x01)
+#define TV_POWER (0x01u)
 #define TV_VOL_UP (0x02u)
 #define TV_VOL_DOWN (0x03u)
 #define TV_VOL_MUTE (0x04u)
