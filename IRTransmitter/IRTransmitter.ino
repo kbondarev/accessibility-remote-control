@@ -23,30 +23,28 @@
 #define BLE_CHAR "1010"
 #define WIFI_SSID "IR Transmitter"
 
-IRsend irsend(3);
+#define PIN_IR_SEND 9
+#define PIN_IR_RECEIVE 11
+#define PIN_CONFIG_MODE 6
+#define PIN_STATUS_LED A3 // connect to blue
+
+#define BLINK_INTERVAL_SHORT 500
+#define BLINK_INTERVAL_LONG 1500
+
+IRsend irsend(PIN_IR_SEND);
+IRrecv irrecv(PIN_IR_RECEIVE);
 
 BLEService irService(BLE_SERVICE_UUID);
 BLEUnsignedShortCharacteristic remoteChar(BLE_CHAR, BLERead | BLEWrite);
 
 IPAddress ipAddress(10, 1, 1, 1);
-
+WiFiServer server(80); // port 80
 int wifiStatus = WL_IDLE_STATUS;
-WiFiServer server(80);
 
-const int bleRxLedPin = 2; // flashes when new BLE signal received
-int bleRxLedState = LOW;
-unsigned long bleRxLedPreviousMillis = 0; // last time the LED was updated
-const long bleRxLedInterval = 700;        // milliseconds
+int statusLEDState = 0;
+long statusLEDPrevMillis = 0; // last time LED was toggled
 
-const int bleStatusLedPin = LED_BUILTIN; // on when central connected
-int bleStatusLedState = LOW;
-long bleStatusLedPrevMillis = 0; // last time LED was toggled
-const int bleStatusLedInterval = 700;
-
-const int configModePin = 6;
-int isConfigModeRead = 0;
 int isConfigMode = 0;
-
 bool isCentralConnected = false;
 
 void setup()
@@ -57,15 +55,15 @@ void setup()
   DBG_PRINTLN(F("----------------------------------------"));
   DBG_PRINTLN();
 
-  pinMode(bleRxLedPin, OUTPUT);
-  pinMode(bleStatusLedPin, OUTPUT);
-  pinMode(configModePin, INPUT);
+  pinMode(PIN_STATUS_LED_R, OUTPUT);
+  pinMode(PIN_STATUS_LED_G, OUTPUT);
+  pinMode(PIN_STATUS_LED_B, OUTPUT);
+  pinMode(PIN_CONFIG_MODE, INPUT);
 
-  delay(2000);
+  delay(3000); // wait 3 seconds
 
-  // isConfigMode = digitalRead(configModePin);
-  isConfigMode = true; // testing
-
+  isConfigMode = digitalRead(PIN_CONFIG_MODE);
+  // isConfigMode = true; // testing
   if (isConfigMode) {
     DBG_PRINTLN(F("!!! CONFIG MODE"));
     initializeWifi();
@@ -103,7 +101,7 @@ void loop()
 void initializeBLE()
 {
   while (!BLE.begin()) {
-    DBG_PRINTLN("Starting BLE failed!");
+    DBG_PRINTLN(F("Starting BLE failed!"));
     delay(3000); // wait 3 seconds
   }
 
@@ -144,12 +142,7 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     characteristic.readValue(buf, characteristic.valueLength());
 
     printBuffer(buf, characteristic.valueLength());
-    DBG_PRINT(">>> Command Received: ");
-
-    // turn on the LED when receving signal
-    bleRxLedState = HIGH;
-    digitalWrite(bleRxLedPin, bleRxLedState);
-    bleRxLedPreviousMillis = currentMillis;
+    DBG_PRINT(F(">>> Command Received: "));
 
     int cmd = buf[0];
     switch (cmd) {
@@ -186,8 +179,7 @@ void initializeWifi()
     delay(3000); // wait 3 seconds
   }
 
-  // wait 10 seconds for connection:
-  // delay(10000);
+  delay(3000);
 
   // start the web server on port 80
   server.begin();
@@ -230,7 +222,7 @@ void handleWifiConnections()
         ""; // make a String to hold incoming data from the client
     int proccessCommand = 0;
     int command = -1;
-    
+
     while (client.connected()) { // loop while the client's connected
       if (client.available()) {  // if there's bytes to read from the client,
         char c = client.read();  // read a byte, then
@@ -247,16 +239,14 @@ void handleWifiConnections()
               DBG_PRINTLN(command, DEC);
               DBG_PRINTLN();
 
-              
-              delay(5000);
+              // TODO receive IR Signal,then save to EEPROM
+              // timeout for IR signal after 10 seconds
+              // send client.println("HTTP/1.1 408 Request Timeout"); on timeout
               client.println("HTTP/1.1 200 OK");
             } else {
               client.println("HTTP/1.1 200 OK");
             }
-
-
             // Construct the rest of the response
-            
             client.println("Content-type:text/html");
             client.println();
             client.print(CONFIG_HTML);
@@ -280,10 +270,8 @@ void handleWifiConnections()
           // All commands are sent to path:
           //      "GET /cmd/{command number}"
           // e.g: "GET /cmd/42"
-
-          // parse the command number from the path:
-
-          // next char
+          //
+          // the next code block parses the command number from the path:
           int idx = currentLine.indexOf("cmd/");
           if (idx >= 0) { // -1 means not found
             int startIdx = idx + 4;
@@ -292,19 +280,11 @@ void handleWifiConnections()
             String cmdStr = currentLine.substring(startIdx, endIdx);
             DBG_PRINT(">>>>>>>>>>> cmd=");
             DBG_PRINTLN(cmdStr);
-            command = cmdStr.toInt();
+            command = cmdStr.toInt(); // parsed command number
+            // set flag to proccess the command at the end of the HTTP request
+            // body
             proccessCommand = 1;
-
           }
-
-          //   found = currentLine.lastIndexOf("&", sizeof(currentLine));
-          //   if (found == -1) {
-          //     found = currentLine.lastIndexOf("?", sizeof(currentLine));
-          //   }
-          //   DBG_PRINT(found);
-          //   String s = currentLine.substring(
-          //       found, currentLine.lastIndexOf("&", found + 1));
-          //   DBG_PRINTLN(s);
         }
       }
     }
@@ -314,25 +294,39 @@ void handleWifiConnections()
   }
 }
 
+void toggleStatusLEDState(interval)
+{
+  int now = millis();
+  if (now - statusLEDPrevMillis > interval) {
+    // toggle LED state
+    statusLEDState = statusLEDState == HIGH ? LOW : HIGH;
+    statusLEDPrevMillis = now;
+    digitalWrite(PIN_STATUS_LED, statusLEDState);
+  }
+}
+
 void handleStatusLED()
 {
-  if (isCentralConnected) {
-    if (bleStatusLedState == LOW) {
-      // BLE Central got connected, therefore turn status LED on
-      digitalWrite(bleStatusLedPin, HIGH);
-    }
+  if (isConfigMode) {
+    // CONFIGURATION MODE:
+    // Status LED should flash/blink slowly
+
+    toggleStatusLEDState(BLINK_INTERVAL_LONG);
   } else {
-    // BLE Central not connected, threfore blink status LED
-    int now = millis();
-    if (now - bleStatusLedPrevMillis > bleStatusLedInterval) {
-      bleStatusLedPrevMillis = now;
-      if (bleStatusLedState == HIGH) {
-        digitalWrite(bleStatusLedPin, LOW);
-        bleStatusLedState = LOW;
-      } else {
-        digitalWrite(bleStatusLedPin, HIGH);
-        bleStatusLedState = HIGH;
+    // OPERATION MODE:
+    // Status LED should be ON when BLE is connected
+    // Status LED should flash/blink quickly when BLE is NOT connected
+
+    if (isCentralConnected) {
+      if (statusLEDState == LOW) {
+        // BLE Central got connected, therefore turn the Status LED on
+        statusLEDState = HIGH;
+        digitalWrite(PIN_STATUS_LED, statusLEDState);
       }
+    } else {
+      // BLE Central not connected, therefore flash the Status LED
+
+      toggleStatusLEDState(BLINK_INTERVAL_SHORT);
     }
   }
 }
