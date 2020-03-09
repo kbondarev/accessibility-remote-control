@@ -1,17 +1,120 @@
 #ifndef Config_HTML_h
 #define Config_HTML_h
 
-#define CONFIG_HTML "<!doctypehtml><html lang=\"en\"><meta charset=\"UTF-8\"><meta name=\"viewport\"content=\"width=device-width,initial-scale=1\"><title>IR-Transmitter Configuration</title><style>body{font-size:1.5em;padding:0 10px 50px 10px}label{display:block;margin-bottom:5px;width:fit-content}[type=button]{background-color:#3a6bd4;border:none;color:#fff;padding:10px 24px;text-align:left;text-decoration:none;display:block;font-size:16px;font-weight:600;width:230px}.green{font-weight:600;padding:0 3px;background-color:#4caf50;color:#fff}.yellow{font-weight:600;padding:0 3px;background-color:#eeb824;color:#fff}.red{font-weight:600;padding:0 3px;background-color:#bd2424;color:#fff}</style><h1>IR Transmitter Configuration</h1><h2>Instructions:</h2><ol><li>Click on the command button you wish to set<li>The button will turn <span class=\"yellow\">yellow</span><li>Point the remote at the device, and then press the corresponding button on the remote<li>The button on the screen will turn <span class=\"green\">green</span> if the device succesfully registered the infrared signal</ol><b>Note that you don't have to configure all the command, but only the ones you are using</b><br><br><br><label><button type=\"button\"onclick=\"clicked(this,1)\">TV POWER ON/OFF</button></label> <label><button type=\"button\"onclick=\"clicked(this,2)\">TV VOLUME UP</button></label> <label><button type=\"button\"onclick=\"clicked(this,3)\">TV VOLUME DOWN</button></label> <label><button type=\"button\"onclick=\"clicked(this,4)\">TV VOLUME MUTE</button></label> <label><button type=\"button\"onclick=\"clicked(this,5)\">TV CHANNEL UP</button></label> <label><button type=\"button\"onclick=\"clicked(this,6)\">TV CHANNEL DOWN</button></label> <label><button type=\"button\"onclick=\"clicked(this,7)\">TV SOURCE</button></label> <label><button type=\"button\"onclick=\"clicked(this,41)\">DVD POWER ON/OFF</button></label> <label><button type=\"button\"onclick=\"clicked(this,42)\">DVD PLAY</button></label> <label><button type=\"button\"onclick=\"clicked(this,43)\">DVD PAUSE</button></label> <label><button type=\"button\"onclick=\"clicked(this,44)\">DVD STOP</button></label> <label><button type=\"button\"onclick=\"clicked(this,45)\">DVD SKIP NEXT</button></label> <label><button type=\"button\"onclick=\"clicked(this,46)\">DVD SKIP PREVIOUS</button></label> <label><button type=\"button\"onclick=\"clicked(this,47)\">DVD MENU</button></label> <label><button type=\"button\"onclick=\"clicked(this,48)\">DVD MENU UP</button></label> <label><button type=\"button\"onclick=\"clicked(this,49)\">DVD MENU DOWN</button></label> <label><button type=\"button\"onclick=\"clicked(this,50)\">DVD MENU LEFT</button></label> <label><button type=\"button\"onclick=\"clicked(this,51)\">DVD MENU RIGHT</button></label> <label><button type=\"button\"onclick=\"clicked(this,52)\">DVD MENU ENTER</button></label> <label><button type=\"button\"onclick=\"clicked(this,53)\">DVD VOLUME UP</button></label> <label><button type=\"button\"onclick=\"clicked(this,54)\">DVD VOLUME DOWN</button></label> <label><button type=\"button\"onclick=\"clicked(this,55)\">DVD VOLUME MUTE</button></label><script>const GREEN = '#4caf50';\n\r\
+#define CONFIG_HTML "<!doctypehtml><html lang=\"en\"><meta charset=\"UTF-8\"><meta name=\"viewport\"content=\"width=device-width,initial-scale=1\"><title>Trigger Configuration</title><style>body{padding:0 10px 50px 10px}select{margin:20px 0 30px 0;font-size:1.3em}#save{margin-top:20px}#add,#save{background-color:#db690c;border:none;color:#fff;padding:5px 14px;text-align:left;text-decoration:none;font-size:1.2em;font-weight:700}table{font-family:'Trebuchet MS',Arial,Helvetica,sans-serif;border-collapse:collapse;width:100%}table td,table th{border:1px solid #ddd;padding:8px}table tr:nth-child(even){background-color:#f2f2f2}table tr:hover{background-color:#ddd}table th{padding-top:12px;padding-bottom:12px;text-align:left;background-color:#4caf50;color:#fff}.btn{border:none;color:#fff;margin:0 2px;text-align:center;text-decoration:none;font-size:24px;font-weight:800;display:inline-block;cursor:pointer}.btn.arrow{background-color:#4caf50}.btn.delete{background-color:#c31414}:disabled{background-color:grey!important}</style><h1>IR Transmitter Configuration</h1><h2>Instructions:</h2><ol><li>The commands will be executed in the order they appear in the table (top command will be executed first, while the bottom command last)<li>To add a command, select it from the dropdown menu and click on the <b>ADD COMMAND</b> button<li>You may use the action buttons to move the commands <b>UP</b> or <b>DOWN</b>, or <b>DELETE</b> it from the list<li>Once you are done, click the <b>SAVE</b> button at the bottom of the table</ol><br><br><br><select id=\"select\"></select> <input id=\"add\"type=\"button\"value=\"ADD COMMAND\"onclick=\"clickedAdd()\"><table><thead><tr><th>#<th>COMMAND<th>ACTIONS<tbody id=\"table\"></table><input id=\"save\"type=\"button\"value=\"SAVE\"onclick=\"clickedAdd()\"><script>const GREEN = '#4caf50';\n\r\
     const YELLOW = '#eeb824';\n\r\
     const BLUE = '#3a6bd4';\n\r\
-    function clicked(button, command) {\n\r\
-      //   let text = new String(el.innerHTML);\n\r\
-      button.style.backgroundColor = YELLOW;\n\r\
-      doPost(command, button);\n\r\
+    const OPTION = '<option value=\"$$VAL$$\">$$CMD$$</option>';\n\r\
+    const ROW = `<tr>\n\r\
+        <td>$$INDEX$$</td>\n\r\
+        <td>$$CMD$$</td>\n\r\
+        <td>\n\r\
+          <input\n\r\
+            class=\"btn arrow\"\n\r\
+            type=\"button\"\n\r\
+            value=\"&uarr;\"\n\r\
+            $$UP$$\n\r\
+            onclick=\"clickedUp($$INDEX$$)\"\n\r\
+          />\n\r\
+          <input\n\r\
+            class=\"btn arrow\"\n\r\
+            type=\"button\"\n\r\
+            value=\"&darr;\"\n\r\
+            $$DOWN$$\n\r\
+            onclick=\"clickedDown($$INDEX$$)\"\n\r\
+          />\n\r\
+          <input\n\r\
+            class=\"btn delete\"\n\r\
+            type=\"button\"\n\r\
+            value=\"x\"\n\r\
+            onclick=\"clickedDelete($$INDEX$$)\"\n\r\
+          />\n\r\
+        </td>\n\r\
+      </tr>`;\n\r\
+    const ALL_COMMANDS = [\n\r\
+      [1, 'TV_POWER'],\n\r\
+      [2, 'TV_VOL_UP'],\n\r\
+      [3, 'TV_VOL_DOWN'],\n\r\
+      [4, 'TV_VOL_MUTE'],\n\r\
+      [5, 'TV_CHANNEL_UP'],\n\r\
+      [6, 'TV_CHANNEL_DOWN'],\n\r\
+      [7, 'TV_SOURCE'],\n\r\
+      [41, 'DVD_POWER'],\n\r\
+      [42, 'DVD_PLAY'],\n\r\
+      [43, 'DVD_PAUSE'],\n\r\
+      [44, 'DVD_STOP'],\n\r\
+      [45, 'DVD_SKIP_NEXT'],\n\r\
+      [46, 'DVD_SKIP_PREV'],\n\r\
+      [47, 'DVD_MENU'],\n\r\
+      [48, 'DVD_MENU_UP'],\n\r\
+      [49, 'DVD_MENU_DOWN'],\n\r\
+      [50, 'DVD_MENU_LEFT'],\n\r\
+      [51, 'DVD_MENU_RIGHT'],\n\r\
+      [52, 'DVD_MENU_ENTER'],\n\r\
+      [53, 'DVD_VOL_UP'],\n\r\
+      [54, 'DVD_VOL_DOWN'],\n\r\
+      [55, 'DVD_VOL_MUTE']\n\r\
+    ];\n\r\
+    let commands = [];\n\r\
+    function renderSelectOptions() {\n\r\
+      let content = '';\n\r\
+      ALL_COMMANDS.forEach((cmd, i) => {\n\r\
+        let opt = new String(OPTION);\n\r\
+        opt = opt.replace('$$VAL$$', i);\n\r\
+        opt = opt.replace('$$CMD$$', cmd[1]);\n\r\
+        content += opt;\n\r\
+      });\n\r\
+      let select = document.getElementById('select');\n\r\
+      select.innerHTML = content;\n\r\
+    }\n\r\
+    function renderCommands() {\n\r\
+      let content = '';\n\r\
+      commands.forEach((cmd, i) => {\n\r\
+        let row = new String(ROW);\n\r\
+        row = row.replace('$$CMD$$', cmd[1]);\n\r\
+        row = row.replace('$$INDEX$$', i + 1);\n\r\
+        row = row.replace('$$INDEX$$', i);\n\r\
+        row = row.replace('$$INDEX$$', i);\n\r\
+        row = row.replace('$$INDEX$$', i);\n\r\
+        row = row.replace('$$UP$$', i == 0 ? 'disabled' : '');\n\r\
+        row = row.replace(\n\r\
+          '$$DOWN$$',\n\r\
+          i == commands.length - 1 ? 'disabled' : ''\n\r\
+        );\n\r\
+        content += row;\n\r\
+      });\n\r\
+      if (commands.length == 0) {\n\r\
+        content = '<tr><td colspan=\"3\" style=\"text-align: center; font-size: 2em; font-weight: 700;\">NO COMMANDS SELECTED!</td></tr>'\n\r\
+      }\n\r\
+      let table = document.getElementById('table');\n\r\
+      table.innerHTML = content;\n\r\
+    }\n\r\
+    function clickedAdd() {\n\r\
+      let select = document.getElementById('select');\n\r\
+      commands.push(ALL_COMMANDS[select.value]);\n\r\
+      renderCommands();\n\r\
+    }\n\r\
+    function clickedUp(index) {\n\r\
+      console.log('up: index=', index);\n\r\
+      var tmp = commands.splice(index, 1)[0];\n\r\
+      commands.splice(index - 1, 0, tmp);\n\r\
+      console.log('up: commands=', commands);\n\r\
+      renderCommands();\n\r\
+    }\n\r\
+    function clickedDown(index) {\n\r\
+      console.log('down: index=', index);\n\r\
+      var tmp = commands.splice(index, 1)[0];\n\r\
+      commands.splice(index + 1, 0, tmp);\n\r\
+      console.log('down: commands=', commands);\n\r\
+      renderCommands();\n\r\
+    }\n\r\
+    function clickedDelete(index) {\n\r\
+      commands.splice(index, 1)[0];\n\r\
+      renderCommands();\n\r\
     }\n\r\
     function doPost(command, button) {\n\r\
       var xhr = new XMLHttpRequest();\n\r\
-      xhr.open('GET', './cmd/'+command);\n\r\
+      xhr.open('GET', './cmd/' + command);\n\r\
       xhr.setRequestHeader('Content-Type', 'text/plain');\n\r\
       xhr.onload = function() {\n\r\
         if (xhr.status === 200) {\n\r\
@@ -23,7 +126,8 @@
         }\n\r\
       };\n\r\
       xhr.send();\n\r\
-    }</script>\n\r\
-    "
+    }\n\r\
+    renderSelectOptions();\n\r\
+    renderCommands();</script>\n\r"
 
-#endif BLE_Protocol_h
+#endif Config_HTML_h
