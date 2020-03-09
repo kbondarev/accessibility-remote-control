@@ -3,14 +3,15 @@
     {
       "name": "Linux",
       "includePath": [
-        "/usr/local/arduino/tools/**",
-        "/usr/local/arduino/hardware/tools/**",
-        "/usr/local/arduino/hardware/arduino/avr/**",
-        "/usr/local/arduino/libraries/**",
+        "/usr/share/arduino/tools/**",
+        "/usr/share/arduino/hardware/tools/**",
+        "/usr/share/arduino/hardware/arduino/avr/**",
+        "/usr/share/arduino/libraries/**",
+        "/home/${USER}/Arduino/libraries/**",
         "${workspaceFolder}/libs/**"
       ],
       "forcedInclude": [
-        "/usr/local/arduino/hardware/arduino/avr/cores/arduino/Arduino.h"
+        "/usr/share/arduino/hardware/arduino/avr/cores/arduino/Arduino.h"
       ],
       "intelliSenseMode": "gcc-x64",
       "compilerPath": "/usr/bin/gcc",

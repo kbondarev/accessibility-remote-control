@@ -1,7 +1,7 @@
 /*
  * This header file contains all the Bluetooch protocol codes
- * TV commands range:   1 - 40 [1-64]
- * DVD commands range:  41 - 80 [65-128]
+ * TV commands range:   1 - 40
+ * DVD commands range:  41 - 80
  */
 
 #ifndef BLE_Protocol_h
@@ -31,4 +31,4 @@
 #define DVD_VOL_DOWN (54u)
 #define DVD_VOL_MUTE (55u)
 
-#endif BLE_Protocol_h
+#endif BLE_Protocol_hk

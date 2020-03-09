@@ -1,27 +1,24 @@
 {
-    "configurations": [
-        {
-            "name": "Linux",
-            "includePath": [
-                "/home/kiro/.arduino15/packages/arduino/tools/**",
-                "/home/kiro/.arduino15/packages/arduino/hardware/samd/1.8.4/**",
-                "/usr/local/arduino/tools/**",
-                "/usr/local/arduino/hardware/tools/**",
-                "/usr/local/arduino/hardware/arduino/avr/**",
-                "/usr/local/arduino/libraries/**",
-                "${workspaceFolder}/libs/**"
-            ],
-            "forcedInclude": [
-                "/home/kiro/.arduino15/packages/arduino/hardware/samd/1.8.4/cores/arduino/Arduino.h"
-            ],
-            "intelliSenseMode": "gcc-x64",
-            "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "defines": [
-                "USBCON"
-            ]
-        }
-    ],
-    "version": 4
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "/usr/share/arduino/tools/**",
+        "/usr/share/arduino/hardware/tools/**",
+        "/usr/share/arduino/hardware/arduino/avr/**",
+        "/usr/share/arduino/libraries/**",
+        "/home/${USER}/Arduino/libraries/**",
+        "${workspaceFolder}/libs/**"
+      ],
+      "forcedInclude": [
+        "/usr/share/arduino/hardware/arduino/avr/cores/arduino/Arduino.h"
+      ],
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "defines": ["USBCON"]
+    }
+  ],
+  "version": 4
 }

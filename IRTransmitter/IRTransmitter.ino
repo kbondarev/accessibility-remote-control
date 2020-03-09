@@ -1,25 +1,27 @@
 #include <ArduinoBLE.h>
+#include <IRremote.h>
 #include <SPI.h>
 #include <WiFiNINA.h>
-#include <IRremote.h>
 
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define DEBUG  1
+#define DEBUG 1
 
 #if DEBUG
-#	define DBG_PRINT(...)    Serial.print(__VA_ARGS__)
-#	define DBG_PRINTLN(...)  Serial.println(__VA_ARGS__)
+#define DBG_PRINT(...) Serial.print(__VA_ARGS__)
+#define DBG_PRINTLN(...) Serial.println(__VA_ARGS__)
+#define DBG_WRITE(...) Serial.write(__VA_ARGS__)
 #else
-#	define DBG_PRINT(...)
-#	define DBG_PRINTLN(...)
+#define DBG_PRINT(...)
+#define DBG_PRINTLN(...)
+#define DBG_WRITE(...)
 #endif
 
 #define BLE_NAME "IRTx"
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
-#define WIFI_SSID "IR-Tx"
+#define WIFI_SSID "IR Transmitter"
 
 IRsend irsend(3);
 
@@ -41,6 +43,10 @@ int bleStatusLedState = LOW;
 long bleStatusLedPrevMillis = 0; // last time LED was toggled
 const int bleStatusLedInterval = 700;
 
+const int configModePin = 6;
+int isConfigModeRead = 0;
+int isConfigMode = 0;
+
 bool isCentralConnected = false;
 
 void setup()
@@ -53,37 +59,45 @@ void setup()
 
   pinMode(bleRxLedPin, OUTPUT);
   pinMode(bleStatusLedPin, OUTPUT);
+  pinMode(configModePin, INPUT);
 
-  initializeBLE();
-  printBLEStatus();
+  delay(2000);
 
-  // TODO: Wifi stuff
-  // initializeWifi();
-  // printWifiStatus();
+  // isConfigMode = digitalRead(configModePin);
+  isConfigMode = true; // testing
+
+  if (isConfigMode) {
+    DBG_PRINTLN(F("!!! CONFIG MODE"));
+    initializeWifi();
+    printWifiStatus();
+  } else {
+    DBG_PRINTLN(F("!!! OPERATION MODE"));
+    initializeBLE();
+    printBLEStatus();
+  }
 }
 
 void loop()
 {
   handleStatusLED();
 
-  // listen for BLE peripherals to connect:
-  BLEDevice central = BLE.central();
-  if (central) {
-    if (!isCentralConnected && central.connected()) {
-      DBG_PRINT(F("Device connected: "));
-      DBG_PRINTLN(central.address());
-      isCentralConnected = true;
-    } else if (!central.connected()) {
-      DBG_PRINT(F("Device disconnected: "));
-      DBG_PRINTLN(central.address());
-      isCentralConnected = false;
+  if (isConfigMode) {
+    handleWifiConnections();
+  } else {
+    // listen for BLE peripherals to connect:
+    BLEDevice central = BLE.central();
+    if (central) {
+      if (!isCentralConnected && central.connected()) {
+        DBG_PRINT(F("Device connected: "));
+        DBG_PRINTLN(central.address());
+        isCentralConnected = true;
+      } else if (!central.connected()) {
+        DBG_PRINT(F("Device disconnected: "));
+        DBG_PRINTLN(central.address());
+        isCentralConnected = false;
+      }
     }
   }
-
-  // TODO: wifi stuff
-  // It seems like Wifi cannot be enabled at the same time with bluetooth
-  // need to have a switch that would go into setup mode: BLE off, wifi ON
-  // handleWifiConnections();
 }
 
 void initializeBLE()
@@ -118,7 +132,7 @@ void printBLEStatus()
   DBG_PRINTLN("\tSERVICE_UUID:\t" + String(BLE_SERVICE_UUID));
   DBG_PRINTLN("\tCHARACTERISTIC:\t" + String(BLE_CHAR));
   DBG_PRINTLN("\t\t\t(value size: " + String(remoteChar.valueSize()) +
-                 " bytes)");
+              " bytes)");
 }
 
 void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
@@ -141,7 +155,8 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     switch (cmd) {
     case TV_POWER:
       DBG_PRINT("TV_POWER");
-      // THIS CASE BLOCK IS EXECUTED WHEN BUTTON IS PUSHED ON THE TRIGGER DEVICE!
+      // THIS CASE BLOCK IS EXECUTED WHEN BUTTON IS PUSHED ON THE TRIGGER
+      // DEVICE!
       irsend.sendNEC(0x61A0F00F, 32);
       delay(40);
       irsend.sendNEC(0xFFFFFFFF, 32);
@@ -209,31 +224,42 @@ void handleWifiConnections()
 
   WiFiClient client = server.available(); // listen for incoming clients
 
-  if (client) {                   // if you get a client,
+  if (client) {                // if you get a client,
     DBG_PRINTLN("new client"); // print a message out the serial port
     String currentLine =
         ""; // make a String to hold incoming data from the client
-    int found = 0;
+    int proccessCommand = 0;
+    int command = -1;
+    
     while (client.connected()) { // loop while the client's connected
       if (client.available()) {  // if there's bytes to read from the client,
         char c = client.read();  // read a byte, then
-        Serial.write(c);         // print it out the serial monitor
+        DBG_WRITE(c);            // print it out the serial monitor
         if (c == '\n') {         // if the byte is a newline character
 
           // if the current line is blank, you got two newline characters in a
           // row. that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200
-            // OK) and a content-type so the client knows what's coming, then a
-            // blank line:
-            client.println("HTTP/1.1 200 OK");
+            // DO RESPONSE HERE
+            if (proccessCommand) {
+              DBG_PRINTLN();
+              DBG_PRINT(">>>>>>>>> proccessCommand: command=");
+              DBG_PRINTLN(command, DEC);
+              DBG_PRINTLN();
+
+              
+              delay(5000);
+              client.println("HTTP/1.1 200 OK");
+            } else {
+              client.println("HTTP/1.1 200 OK");
+            }
+
+
+            // Construct the rest of the response
+            
             client.println("Content-type:text/html");
             client.println();
-
-            // the content of the HTTP response follows the header:
             client.print(CONFIG_HTML);
-
-            // The HTTP response ends with another blank line:
             client.println();
             // break out of the while loop:
             break;
@@ -245,17 +271,40 @@ void handleWifiConnections()
           currentLine += c;     // add it to the end of the currentLine
         }
 
-        if (currentLine.endsWith("&")) {
-          DBG_PRINTLN("!!!!!");
+        if (currentLine.endsWith("HTTP/")) {
+          // The currentLine string was filled with path part of the first line
+          // of the http request.
+          // First line of HTTP looks like this:
+          //      "GET /path/to/things HTTP/1.1"
+          //
+          // All commands are sent to path:
+          //      "GET /cmd/{command number}"
+          // e.g: "GET /cmd/42"
 
-          found = currentLine.lastIndexOf("&", sizeof(currentLine));
-          if (found == -1) {
-            found = currentLine.lastIndexOf("?", sizeof(currentLine));
+          // parse the command number from the path:
+
+          // next char
+          int idx = currentLine.indexOf("cmd/");
+          if (idx >= 0) { // -1 means not found
+            int startIdx = idx + 4;
+            // find the index of the second space, 4 chars in "GET "
+            int endIdx = currentLine.indexOf(" ", 4);
+            String cmdStr = currentLine.substring(startIdx, endIdx);
+            DBG_PRINT(">>>>>>>>>>> cmd=");
+            DBG_PRINTLN(cmdStr);
+            command = cmdStr.toInt();
+            proccessCommand = 1;
+
           }
-          DBG_PRINT(found);
-          String s = currentLine.substring(
-              found, currentLine.lastIndexOf("&", found + 1));
-          DBG_PRINTLN(s);
+
+          //   found = currentLine.lastIndexOf("&", sizeof(currentLine));
+          //   if (found == -1) {
+          //     found = currentLine.lastIndexOf("?", sizeof(currentLine));
+          //   }
+          //   DBG_PRINT(found);
+          //   String s = currentLine.substring(
+          //       found, currentLine.lastIndexOf("&", found + 1));
+          //   DBG_PRINTLN(s);
         }
       }
     }
