@@ -28,8 +28,10 @@
 #define PIN_CONFIG_MODE 6
 #define PIN_STATUS_LED A3 // connect to blue
 
-#define BLINK_INTERVAL_SHORT 500
-#define BLINK_INTERVAL_LONG 1500
+#define BLINK_INTERVAL_SHORT 500 // milliseconds
+#define BLINK_INTERVAL_LONG 1500 // milliseconds
+
+#define IR_RECEIVE_TIMEOUT 10000 // 10 seconds
 
 IRsend irsend(PIN_IR_SEND);
 IRrecv irrecv(PIN_IR_RECEIVE);
@@ -55,9 +57,7 @@ void setup()
   DBG_PRINTLN(F("----------------------------------------"));
   DBG_PRINTLN();
 
-  pinMode(PIN_STATUS_LED_R, OUTPUT);
-  pinMode(PIN_STATUS_LED_G, OUTPUT);
-  pinMode(PIN_STATUS_LED_B, OUTPUT);
+  pinMode(PIN_STATUS_LED, OUTPUT);
   pinMode(PIN_CONFIG_MODE, INPUT);
 
   delay(3000); // wait 3 seconds
@@ -68,6 +68,7 @@ void setup()
     DBG_PRINTLN(F("!!! CONFIG MODE"));
     initializeWifi();
     printWifiStatus();
+    irrecv.enableIRIn();
   } else {
     DBG_PRINTLN(F("!!! OPERATION MODE"));
     initializeBLE();
@@ -143,18 +144,22 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
 
     printBuffer(buf, characteristic.valueLength());
     DBG_PRINT(F(">>> Command Received: "));
-
+    unsigned int rawData[77] = {
+        4600, 4550, 500,  500,  550,  500,  500,  500,  500,  550,  500,
+        500,  500,  1500, 550,  500,  500,  550,  450,  550,  500,  500,
+        500,  550,  450,  550,  500,  500,  500,  550,  500,  500,  500,
+        500,  500,  4550, 550,  1500, 500,  1550, 500,  1500, 550,  500,
+        500,  550,  500,  500,  500,  500,  500,  550,  500,  500,  500,
+        500,  500,  550,  450,  550,  500,  1500, 550,  1500, 500,  1550,
+        500,  1500, 550,  1500, 500,  1550, 500,  1500, 550,  1500, 550};
     int cmd = buf[0];
     switch (cmd) {
     case TV_POWER:
       DBG_PRINT("TV_POWER");
       // THIS CASE BLOCK IS EXECUTED WHEN BUTTON IS PUSHED ON THE TRIGGER
       // DEVICE!
-      irsend.sendNEC(0x61A0F00F, 32);
-      delay(40);
-      irsend.sendNEC(0xFFFFFFFF, 32);
-      delay(40);
-      irsend.sendNEC(0xFFFFFFFF, 32);
+
+      irsend.sendRaw(rawData, sizeof(rawData) / sizeof(rawData[0]), 38);
       break;
     case DVD_POWER:
       DBG_PRINT("DVD_POWER");
@@ -167,6 +172,45 @@ void remoteCharWritten(BLEDevice central, BLECharacteristic characteristic)
     DBG_PRINT("\t[");
     DBG_PRINT(cmd); // print decimal value
     DBG_PRINTLN("]");
+  }
+}
+
+void dumpIRCode(decode_results *results)
+{
+  // Start declaration
+  DBG_PRINT("unsigned int  ");         // variable type
+  DBG_PRINT("rawData[");               // array name
+  DBG_PRINT(results->rawlen - 1, DEC); // array size
+  DBG_PRINT("] = {");                  // Start declaration
+
+  // Dump data
+  for (int i = 1; i < results->rawlen; i++) {
+    DBG_PRINT(results->rawbuf[i] * USECPERTICK, DEC);
+    if (i < results->rawlen - 1)
+      DBG_PRINT(","); // ',' not needed on last one
+    if (!(i & 1))
+      DBG_PRINT(" ");
+  }
+
+  // End declaration
+  DBG_PRINT("};"); //
+  // Newline
+  DBG_PRINTLN("");
+
+  // Now dump "known" codes
+  if (results->decode_type != UNKNOWN) {
+
+    // Some protocols have an address
+    if (results->decode_type == PANASONIC) {
+      DBG_PRINT("unsigned int  addr = 0x");
+      DBG_PRINT(results->address, HEX);
+      DBG_PRINTLN(";");
+    }
+
+    // All protocols have data
+    DBG_PRINT("unsigned int  data = 0x");
+    DBG_PRINT(results->value, HEX);
+    DBG_PRINTLN(";");
   }
 }
 
@@ -234,16 +278,44 @@ void handleWifiConnections()
           if (currentLine.length() == 0) {
             // DO RESPONSE HERE
             if (proccessCommand) {
+              proccessCommand = 0;
+
+              // request to set command
               DBG_PRINTLN();
               DBG_PRINT(">>>>>>>>> proccessCommand: command=");
               DBG_PRINTLN(command, DEC);
               DBG_PRINTLN();
 
-              // TODO receive IR Signal,then save to EEPROM
-              // timeout for IR signal after 10 seconds
-              // send client.println("HTTP/1.1 408 Request Timeout"); on timeout
-              client.println("HTTP/1.1 200 OK");
+              delay(1000);
+
+              unsigned long irStartTime = millis();
+              decode_results irResults;
+              int received = 0;
+              while ((received == 0) &&
+                     (millis() - irStartTime < IR_RECEIVE_TIMEOUT)) {
+                if (irrecv.decode(&irResults)) {
+                  received = 1;
+                  DBG_PRINT(F("irResults="));
+                  DBG_PRINTLN(irResults.value, HEX);
+
+                  dumpIRCode(&irResults);
+
+                  // TODO save to EEPROM
+
+                  irrecv.resume(); // Receive the next value
+                }
+                delay(100);
+              }
+
+              if (received) {
+                client.println("HTTP/1.1 200 OK");
+              } else {
+                // timed out
+                client.println("HTTP/1.1 408 Request Timeout");
+              }
+
             } else {
+              //
               client.println("HTTP/1.1 200 OK");
             }
             // Construct the rest of the response
@@ -294,7 +366,7 @@ void handleWifiConnections()
   }
 }
 
-void toggleStatusLEDState(interval)
+void toggleStatusLEDState(int interval)
 {
   int now = millis();
   if (now - statusLEDPrevMillis > interval) {
