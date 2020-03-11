@@ -15,3 +15,7 @@ This project contains the source code for Arduino MKR 1010 boards:
 # MKR1010 Board Pinout
 
 ![MKR1010 Board Pinout](./MKR_WiFi_1010_Pinout.jpg)
+
+# 24LC256 (EEPROM)
+
+![MKR1010 Board Pinout](./pinout-24LC256.png)
