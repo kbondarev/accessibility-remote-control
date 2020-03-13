@@ -33,10 +33,6 @@
 
 #define IR_RECEIVE_TIMEOUT 10000 // 10 seconds
 #define IR_FRQ 38
-// max size of the raw IR code
-// #define IR_CODE_MAX_SIZE 256
-// // number of IR codes
-// #define IR_CODES_TOTAL 32
 
 // Using the 24LC256 chip for EEPROM
 // kbits_256 - Size of EEPROM
@@ -61,16 +57,6 @@ long statusLEDPrevMillis = 0; // last time LED was toggled
 int isConfigMode = 0;
 bool isCentralConnected = false;
 
-// Each code is an array of raw data up to IR_CODE_MAX_SIZE values.
-// The index of each code matches to the index of the codes defined in
-// BLE_Protocol.h.
-// For example: irCode[TV_POWER] would be the array of the raw code for TV_POWER
-// uint32_t irCodesArray[IR_CODES_TOTAL][IR_CODE_MAX_SIZE] = {0};
-// uint8_t irCodesLengths[IR_CODES_TOTAL] = {0};
-
-// // TODO remove
-// unsigned int *irCode;
-// unsigned int irCodeLength;
 
 void printBuffer(byte *buf, int len)
 {
@@ -159,6 +145,7 @@ void bleCharWritten(BLEDevice central, BLECharacteristic characteristic)
         DBG_PRINT(" ");
       }
       DBG_PRINTLN();
+
       // unsigned int * irCodeSend = (unsigned int*)&irCode;
       // unsigned int irCodeLengthSend = (unsigned int)irCodeLength;
       // irsend.sendRaw(irCodeSend, irCodeLengthSend, IR_FRQ);
@@ -288,7 +275,7 @@ void handleWifiConnections()
       }
 
       char c = client.read(); // read a byte, then
-      // DBG_WRITE(c);            // print it out the serial monitor
+      DBG_WRITE(c);            // print it out the serial monitor
       if (c == '\n') { // if the byte is a newline character
 
         // if the current line is blank, you got two newline characters in a
@@ -628,7 +615,6 @@ void setup()
     ;
   }
 #endif
-  delay(5000); // wait 5 seconds
 
   DBG_PRINTLN(F("------------ IR Transmitter ------------"));
   DBG_PRINTLN(F("----------------------------------------"));
@@ -658,7 +644,7 @@ void setup()
   */
 
   // dump for testing
-  dumpEEPROM(1024, 4096);
+  dumpEEPROM(1000, 5000);
 
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
