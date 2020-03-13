@@ -4,7 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "/home/kiro/.arduino15/packages/arduino/tools/**",
-                "/home/kiro/.arduino15/packages/arduino/hardware/samd/1.8.5/**",
                 "/home/kiro/.arduino15/packages/arduino/hardware/samd/1.8.5/cores/arduino"
             ],
             "browse": {

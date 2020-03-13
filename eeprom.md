@@ -1,4 +1,6 @@
-# External EEPROM Resources
+# EEPROM 
+
+## External EEPROM Resources
 
 https://forum.arduino.cc/index.php?topic=358648.0
 
