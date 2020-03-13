@@ -23,9 +23,9 @@
 #define BLE_CHAR "1010"
 #define WIFI_SSID "IR Transmitter"
 
-#define PIN_IR_SEND 9
-#define PIN_IR_RECEIVE 10
-#define PIN_CONFIG_MODE 6
+#define PIN_IR_SEND 9     // connect it out of IR emitter led
+#define PIN_IR_RECEIVE 10 // connect to pin 1 of TSO32338
+#define PIN_CONFIG_MODE 6 // connect to switch and ground
 #define PIN_STATUS_LED A3 // connect to blue
 
 #define BLINK_INTERVAL_SHORT 500 // milliseconds

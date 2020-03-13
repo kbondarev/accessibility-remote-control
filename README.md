@@ -19,3 +19,8 @@ This project contains the source code for Arduino MKR 1010 boards:
 # 24LC256 (EEPROM)
 
 ![MKR1010 Board Pinout](./pinout-24LC256.png)
+
+
+# TSOP32338 (IR Receiver @ 38kHz base frequency)
+
+![TSOP32338 Pinout](./TSOP32338_pinout.png)
