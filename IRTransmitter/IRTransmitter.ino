@@ -59,7 +59,6 @@ long statusLEDPrevMillis = 0; // last time LED was toggled
 int isConfigMode = 0;
 bool isCentralConnected = false;
 
-
 void printBuffer(byte *buf, int len)
 {
   DBG_PRINT("\n\t{");
@@ -277,8 +276,8 @@ void handleWifiConnections()
       }
 
       char c = client.read(); // read a byte, then
-      DBG_WRITE(c);            // print it out the serial monitor
-      if (c == '\n') { // if the byte is a newline character
+      DBG_WRITE(c);           // print it out the serial monitor
+      if (c == '\n') {        // if the byte is a newline character
 
         // if the current line is blank, you got two newline characters in a
         // row. that's the end of the client HTTP request, so send a response:
@@ -303,9 +302,9 @@ void handleWifiConnections()
             // wait for IR Code
             unsigned long irStartTime = millis();
             decode_results irResults;
-            // &&                   (millis() - irStartTime <
-            // IR_RECEIVE_TIMEOUT)
-            while ((receivedIRCode == 0)) {
+
+            while ((receivedIRCode == 0) &&
+                   (millis() - irStartTime < IR_RECEIVE_TIMEOUT)) {
 
               if (irrecv.decode(&irResults)) {
                 receivedIRCode = 1;
@@ -481,7 +480,7 @@ void eeReadIRCode(uint32_t codeId, uint32_t irCode[], uint8_t *codeSize)
  * Write IR Code to EEPROM
  * codeId - the ID of the code you wish to write
  */
-void eeWriteIRCode(uint32_t codeId, uint32_t *irCode, uint8_t codeSize)
+void eeWriteIRCode(uint32_t codeId, uint32_t irCode[], uint8_t codeSize)
 {
   // For each code we allocate 1024 bytes in the EEPROM.
   // The first byte of each code is the size of the raw IR code (as number of
@@ -581,7 +580,7 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
   DBG_PRINTLN(nBytes);
   uint32_t nRows = (nBytes + 15) >> 4;
 
-  uint8_t d[16];
+  uint8_t d[16] = {0};
   for (uint32_t r = 0; r < nRows; r++) {
     uint32_t a = startAddr + 16 * r;
     eep.read(a, d, 16);
