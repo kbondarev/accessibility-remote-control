@@ -2,6 +2,9 @@
  * This header file contains all the Bluetooch protocol codes
  * TV commands range:   1 - 40
  * DVD commands range:  41 - 80
+ *
+ * IMPORTANT: CHANGING THESE VALUES WOULD ALSO MEAN THAT MUST CHANGE VALUES IN
+ * THE CONFIGURATION HTML PAGE
  */
 
 #ifndef BLE_Protocol_h

@@ -1,7 +1,7 @@
-#include <ArduinoBLE.h>
-#include <IRremote.h>
 #include <SPI.h>
+#include <ArduinoBLE.h>
 #include <WiFiNINA.h>
+#include <IRremote.h>
 #include <Wire.h>
 #include <extEEPROM.h>
 
@@ -13,6 +13,7 @@
 #if PRINT_DEBUG
 #define DBG_PRINT(...) Serial.print(__VA_ARGS__)
 #define DBG_PRINTLN(...) Serial.println(__VA_ARGS__)
+#define DBG_WRITE(...) Serial.write(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #define DBG_PRINTLN(...)
@@ -21,7 +22,8 @@
 #define BLE_NAME "IRTx"
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
-#define WIFI_SSID "IR Transmitter"
+
+#define WIFI_SSID "ARB: IR Emitter"
 
 #define PIN_IR_SEND 9     // connect it out of IR emitter led
 #define PIN_IR_RECEIVE 10 // connect to pin 1 of TSO32338
@@ -47,11 +49,11 @@ IRrecv irrecv(PIN_IR_RECEIVE);
 BLEService irService(BLE_SERVICE_UUID);
 BLEUnsignedShortCharacteristic remoteChar(BLE_CHAR, BLERead | BLEWrite);
 
-IPAddress ipAddress(10, 1, 1, 1);
+IPAddress ipAddress(10, 0, 0, 1);
 WiFiServer server(80); // port 80
 int wifiStatus = WL_IDLE_STATUS;
 
-int statusLEDState = 0;
+int statusLEDState = LOW;
 long statusLEDPrevMillis = 0; // last time LED was toggled
 
 int isConfigMode = 0;
@@ -620,10 +622,6 @@ void setup()
   DBG_PRINTLN(F("----------------------------------------"));
   DBG_PRINTLN();
 
-  DBG_PRINTLN(sizeof(uint32_t));
-  DBG_PRINTLN(sizeof(unsigned int));
-  DBG_PRINTLN(sizeof(long unsigned int));
-
   pinMode(PIN_STATUS_LED, OUTPUT);
   pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
 
@@ -644,7 +642,7 @@ void setup()
   */
 
   // dump for testing
-  dumpEEPROM(1000, 5000);
+  dumpEEPROM(1000, 5000); // TODO remove
 
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
