@@ -6,6 +6,8 @@
 
 #include <ArduinoBLE.h>
 
+#include "BLE_Protocol.h"
+
 #define BLE_PERIPHERAL_NAME "IRTx"
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
@@ -131,7 +133,7 @@ void controlLed(BLEDevice peripheral)
     if (newBtnState == HIGH && oldBtnState != newBtnState &&
         (now - lastTimePushed > pushInterval)) {
       DBG_PRINTLN(">>> Button pushed");
-      int written = characteristic.writeValue((byte)0x01);
+      int written = characteristic.writeValue(TV_POWER);
       if (written) {
         playTune();
       }
