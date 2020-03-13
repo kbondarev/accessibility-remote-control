@@ -1,7 +1,7 @@
-#include <SPI.h>
-#include <WiFiNINA.h>
 #include <ArduinoBLE.h>
 #include <IRremote.h>
+#include <SPI.h>
+#include <WiFiNINA.h>
 #include <Wire.h>
 #include <extEEPROM.h>
 
@@ -131,44 +131,44 @@ void bleCharWritten(BLEDevice central, BLECharacteristic characteristic)
   unsigned long currentMillis = millis();
 
   if (characteristic.written()) {
-    byte buf[characteristic.valueSize()];
+    uint8_t buf[characteristic.valueSize()];
     characteristic.readValue(buf, characteristic.valueLength());
 
     printBuffer(buf, characteristic.valueLength());
     DBG_PRINT(F(">>> Command Received: "));
-    // unsigned int rawData[77] = {
-    //     4600, 4550, 500,  500,  550,  500,  500,  500,  500,  550,  500,
-    //     500,  500,  1500, 550,  500,  500,  550,  450,  550,  500,  500,
-    //     500,  550,  450,  550,  500,  500,  500,  550,  500,  500,  500,
-    //     500,  500,  4550, 550,  1500, 500,  1550, 500,  1500, 550,  500,
-    //     500,  550,  500,  500,  500,  500,  500,  550,  500,  500,  500,
-    //     500,  500,  550,  450,  550,  500,  1500, 550,  1500, 500,  1550,
-    //     500,  1500, 550,  1500, 500,  1550, 500,  1500, 550,  1500, 550};
-    int cmd = buf[0];
-    switch (cmd) {
-    case TV_POWER:
-      DBG_PRINT("TV_POWER");
-      // THIS CASE BLOCK IS EXECUTED WHEN BUTTON IS PUSHED ON THE TRIGGER
-      // DEVICE!
 
-      // TODO
-      // irsend.sendRaw(irCode, irCodeLength, IR_FRQ);
+    uint8_t cmd = buf[0];
+    DBG_PRINT(F("["));
+    DBG_PRINT(cmd);
+    DBG_PRINTLN(F("]"));
 
-      break;
-    case DVD_POWER:
-      DBG_PRINT("DVD_POWER");
-      break;
-    default:
-      DBG_PRINT("UNKNOWN!");
-      break;
+    if (cmd == WAIT_3) {
+      // wait 3 seconds
+      DBG_PRINTLN(F(">>> WAITING 3 SECONDS!"));
+      delay(3000);
+    } else {
+      // send IR Code
+      uint32_t c[1024];
+      memset(c, 0, 1024);
+
+      uint8_t len;
+      eeReadIRCode(1, c, &len);
+
+      for (int i = 0; i < len; i++) {
+        DBG_PRINT(c[i]);
+        DBG_PRINT(" ");
+      }
+      DBG_PRINTLN();
+      // unsigned int * irCodeSend = (unsigned int*)&irCode;
+      // unsigned int irCodeLengthSend = (unsigned int)irCodeLength;
+      // irsend.sendRaw(irCodeSend, irCodeLengthSend, IR_FRQ);
+
+      DBG_PRINTLN(F(">>> IR CODE SENT!"));
     }
-
-    DBG_PRINT("\t[");
-    DBG_PRINT(cmd); // print decimal value
-    DBG_PRINTLN("]");
   }
 }
 
+#if PRINT_DEBUG
 void dumpIRCode(decode_results *results)
 {
   // Start declaration
@@ -210,6 +210,7 @@ void dumpIRCode(decode_results *results)
     DBG_PRINTLN(";");
   }
 }
+#endif
 
 void initializeWifi()
 {
@@ -240,6 +241,21 @@ void printWifiStatus()
   DBG_PRINTLN(ip);
 }
 
+void sendHttpResponse(int statusCode, WiFiClient client)
+{
+  if (statusCode == 200) {
+    client.println("HTTP/1.1 200 OK");
+  } else if (statusCode == 408) {
+    client.println("HTTP/1.1 408 Request Timeout");
+  } else {
+    client.println("HTTP/1.1 500 Internal Server Error");
+  }
+  client.println("Content-type:text/html");
+  client.println();
+  client.print(CONFIG_HTML);
+  client.println();
+}
+
 void handleWifiConnections()
 {
 #if PRINT_DEBUG
@@ -259,12 +275,12 @@ void handleWifiConnections()
 
   WiFiClient client = server.available(); // listen for incoming clients
 
-  if (client) { // if you get a client,
+  if (client) {                // if you get a client,
     DBG_PRINTLN("new client"); // print a message out the serial port
     // make a String to hold incoming data from the client
     String currentLine = "";
     int proccessCommand = 0;
-    int command = -1;
+    int codeId = -1;
 
     while (client.connected()) { // loop while the client's connected
       if (!client.available()) {
@@ -282,47 +298,63 @@ void handleWifiConnections()
           // DO RESPONSE HERE
           if (!proccessCommand) {
             // Return the html page
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-            client.print(CONFIG_HTML);
-            client.println();
-            // break out of the while loop:
-            break;
+            sendHttpResponse(200, client);
+            break; // break out of the while loop:
 
           } else {
-            // Process the command
+            // Process the codeId
             proccessCommand = 0;
 
-            // request to set command
+            // request to set codeId
             DBG_PRINTLN();
-            DBG_PRINT(">>>>>>>>> proccessCommand: command=");
-            DBG_PRINTLN(command, DEC);
+            DBG_PRINT(">>>>>>>>> proccessCommand: codeId=");
+            DBG_PRINTLN(codeId, DEC);
             DBG_PRINTLN();
 
             // wait for IR Code
             unsigned long irStartTime = millis();
             decode_results irResults;
-
-            while ((receivedIRCode == 0) &&
-                   (millis() - irStartTime < IR_RECEIVE_TIMEOUT)) {
+            // &&                   (millis() - irStartTime <
+            // IR_RECEIVE_TIMEOUT)
+            while ((receivedIRCode == 0)) {
 
               if (irrecv.decode(&irResults)) {
                 receivedIRCode = 1;
                 DBG_PRINT(F("irResults="));
                 DBG_PRINTLN(irResults.value, HEX);
+#if PRINT_DEBUG
                 dumpIRCode(&irResults);
-              }
+#endif
 
-              irrecv.resume(); // Receive the next value
+                // save IR code to EEPROM
+                // first need to parse the raw data received from IR
+                uint8_t codeSize = irResults.rawlen - 1;
+                uint32_t irCode[codeSize];
+                // for some reason we ignore the first element in results.rawbuf
+                // and start at i=1
+                for (int i = 1; i < irResults.rawlen; i++) {
+                  // this decodes into actual time in microseconds
+                  irCode[i - 1] = irResults.rawbuf[i] * USECPERTICK;
+                }
+                eeWriteIRCode(codeId, irCode, codeSize);
+
+#if PRINT_DEBUG
+                delay(1000); // wait to finish writing ???
+                dumpEEPROM(codeId * 1024, codeSize * 4 + 1);
+#endif
+                irrecv.resume(); // Receive the next value
+              }
+              delay(100); // important! without this we don't receive IR
             }
             // END - wait for IR Code
 
             if (receivedIRCode) {
-              client.println("HTTP/1.1 200 OK");
+              sendHttpResponse(200, client);
+              break;
             } else {
               // timed out
-              client.println("HTTP/1.1 408 Request Timeout");
+              sendHttpResponse(408, client);
+              break;
             }
           }
 
@@ -344,7 +376,7 @@ void handleWifiConnections()
         //      "GET /cmd/{command number}"
         // e.g: "GET /cmd/42"
         //
-        // the next code block parses the command number from the path:
+        // the next code block parses the codeId number from the path:
         int idx = currentLine.indexOf("cmd/");
         if (idx >= 0) { // -1 means not found
           int startIdx = idx + 4;
@@ -353,7 +385,7 @@ void handleWifiConnections()
           String cmdStr = currentLine.substring(startIdx, endIdx);
           DBG_PRINT(">>>>>>>>>>> cmd=");
           DBG_PRINTLN(cmdStr);
-          command = cmdStr.toInt(); // parsed command number
+          codeId = cmdStr.toInt(); // parsed command number
           // set flag to proccess the command at the end of the HTTP request
           // body
           proccessCommand = 1;
@@ -401,31 +433,9 @@ void handleStatusLED()
   }
 }
 
-/*
-void loadCodesFromEEPROM()
+void eeReadIRCode(uint32_t codeId, uint32_t irCode[], uint8_t *codeSize)
 {
-  // DBG_PRINTLN(F("-----------------------------"));
-  // DBG_PRINTLN(F(">>>>>>>>> loadCodesFromEEPROM"));
-  // DBG_PRINTLN(F("-----------------------------"));
-
-  uint32_t msStart = millis();
-
-  for (int i = 0; i < IR_CODES_TOTAL; i++) {
-    eeReadIRCode(i, irCodesArray[i], &irCodesLengths[i]);
-  }
-
-  uint32_t msLapse = millis() - msStart;
-
-  // DBG_PRINTLN(F("-----------------------------"));
-  // DBG_PRINT(F(">>>>>>>>> loadCodesFromEEPROM DONE: "));
-  // DBG_PRINT(msLapse);
-  // DBG_PRINTLN(F(" ms"));
-  // DBG_PRINTLN(F("-----------------------------"));
-}
-*/
-void eeReadIRCode(uint32_t codeId, uint32_t *irCode, uint8_t *codeSize)
-{
-  // DBG_PRINTLN(F(">>> Reading from EEPROM..."));
+  DBG_PRINTLN(F(">>> Reading from EEPROM..."));
   uint32_t msStart = millis();
 
   uint32_t addr = codeId * 1024;
@@ -435,13 +445,17 @@ void eeReadIRCode(uint32_t codeId, uint32_t *irCode, uint8_t *codeSize)
   uint8_t bytesToRead = *codeSize * 4;
 
   DBG_PRINT(F("Number of bytes to read: "));
-  DBG_PRINTLN(bytesToRead);
+  DBG_PRINT(bytesToRead);
+  DBG_PRINT(F(" | 0x"));
+  DBG_PRINTLN(bytesToRead, HEX);
+  DBG_PRINT(F("Number of integers to read: "));
+  DBG_PRINTLN(bytesToRead / 4);
   DBG_PRINT(F("Data start address: "));
   DBG_PRINTLN(startAddrData);
   DBG_PRINTLN();
 
   uint32_t k = 0;
-  for (uint32_t i = startAddrData; i < bytesToRead; i += 4) {
+  for (uint32_t i = startAddrData; i <= (startAddrData + bytesToRead); i += 4) {
     uint8_t data[4];
     eep.read(i, data, 4); // read 4 bytes into data
 
@@ -456,8 +470,8 @@ void eeReadIRCode(uint32_t codeId, uint32_t *irCode, uint8_t *codeSize)
     DBG_PRINTLN();
 
     // add the 4 bytes to construct one uint32_t:
-    irCode[k] = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-                ((uint32_t)data[2] << 8) | ((uint32_t)data[3]);
+    irCode[k] = ((uint32_t)data[0] << 24) + ((uint32_t)data[1] << 16) +
+                ((uint32_t)data[2] << 8) + ((uint32_t)data[3]);
 
     DBG_PRINT(F("Summed bytes: 0x"));
     DBG_PRINT(irCode[k], HEX);
@@ -497,6 +511,7 @@ void eeWriteIRCode(uint32_t codeId, uint32_t *irCode, uint8_t codeSize)
   DBG_PRINTLN();
 
   eep.write(addr, codeSize); // first byte is allocated for data size
+  delay(10);
 
   for (uint32_t i = 0; i < codeSize; i++) {
     // Split each value in the irCode array into 4 bytes.
@@ -508,7 +523,7 @@ void eeWriteIRCode(uint32_t codeId, uint32_t *irCode, uint8_t codeSize)
     data[3] = irCode[i];
 
     DBG_PRINT(i, DEC);
-    DBG_PRINT("\t\t: ");
+    DBG_PRINT(F("\t: "));
     DBG_PRINT(data[0], HEX);
     DBG_PRINT(F(" "));
     DBG_PRINT(data[1], HEX);
@@ -516,13 +531,21 @@ void eeWriteIRCode(uint32_t codeId, uint32_t *irCode, uint8_t codeSize)
     DBG_PRINT(data[2], HEX);
     DBG_PRINT(F(" "));
     DBG_PRINT(data[3], HEX);
+    DBG_PRINT(F("\t| 0x"));
+    DBG_PRINT(irCode[i], HEX);
+    DBG_PRINT(F("\t| "));
+    DBG_PRINT(irCode[i], DEC);
     DBG_PRINTLN();
 
     // Write the 4 bytes onto the EEPROM
     eep.write(startAddrData + (i * 4 + 0), data[0]);
+    delay(50);
     eep.write(startAddrData + (i * 4 + 1), data[1]);
+    delay(50);
     eep.write(startAddrData + (i * 4 + 2), data[2]);
+    delay(50);
     eep.write(startAddrData + (i * 4 + 3), data[3]);
+    delay(50);
   }
 
   uint32_t msLapse = millis() - msStart;
@@ -537,14 +560,16 @@ void eeErase(uint32_t startAddr, uint32_t endAddr)
   const uint8_t chunk = 64;
   uint8_t data[chunk];
   DBG_PRINTLN(F("Erasing..."));
-  for (int i = 0; i < chunk; i++)
+  for (int i = 0; i < chunk; i++) {
     data[i] = 0xFF;
+  }
   uint32_t msStart = millis();
 
   for (uint32_t a = startAddr; a <= endAddr; a += chunk) {
-    if ((a & 0xFFF) == 0)
+    if ((a & 0xFFF) == 0) {
       DBG_PRINTLN(a);
-      eep.write(a, data, chunk);
+    }
+    eep.write(a, data, chunk);
   }
   uint32_t msLapse = millis() - msStart;
   DBG_PRINT(F("Erase lapse: "));
@@ -574,19 +599,21 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
     DBG_PRINT(F("0x"));
     if (a < 16 * 16 * 16)
       DBG_PRINT(F("0"));
-      if (a < 16 * 16)
+    if (a < 16 * 16)
+      DBG_PRINT(F("0"));
+    if (a < 16)
+      DBG_PRINT(F("0"));
+    DBG_PRINT(a, HEX);
+    DBG_PRINT(F(" ("));
+    DBG_PRINT(a, DEC);
+    DBG_PRINT(F(") "));
+    for (int c = 0; c < 16; c++) {
+      if (d[c] < 16) {
         DBG_PRINT(F("0"));
-        if (a < 16)
-          DBG_PRINT(F("0"));
-          DBG_PRINT(a, HEX);
-          DBG_PRINT(F(" "));
-          for (int c = 0; c < 16; c++) {
-            if (d[c] < 16) {
-              DBG_PRINT(F("0"));
-              DBG_PRINT(d[c], HEX);
-              DBG_PRINT(c == 7 ? "  " : " ");
-            }
-          }
+      }
+      DBG_PRINT(d[c], HEX);
+      DBG_PRINT(c == 7 ? "  " : " ");
+    }
     DBG_PRINTLN(F(""));
   }
 }
@@ -596,14 +623,23 @@ void setup()
 {
   Serial.begin(9600);
 
+#if PRINT_DEBUG
+  while (!Serial) {
+    ;
+  }
+#endif
+  delay(5000); // wait 5 seconds
+
   DBG_PRINTLN(F("------------ IR Transmitter ------------"));
   DBG_PRINTLN(F("----------------------------------------"));
   DBG_PRINTLN();
 
-  pinMode(PIN_STATUS_LED, OUTPUT);
-  pinMode(PIN_CONFIG_MODE, INPUT);
+  DBG_PRINTLN(sizeof(uint32_t));
+  DBG_PRINTLN(sizeof(unsigned int));
+  DBG_PRINTLN(sizeof(long unsigned int));
 
-  delay(5000); // wait 3 seconds
+  pinMode(PIN_STATUS_LED, OUTPUT);
+  pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
 
   // init EEPROM
   byte i2cStat = eep.begin(eep.twiClock400kHz);
@@ -613,10 +649,19 @@ void setup()
     DBG_PRINTLN(F("Initilized external EEPROM successfully"));
   }
 
-  // loadCodesFromEEPROM();
+  /*
+  // DELETE AND DUMP ALL EEPROM
+  // DO THIS ONLY ONCE WHEN CONNECTING A NEW EEPROM CHIP
 
-  // isConfigMode = digitalRead(PIN_CONFIG_MODE);
-  isConfigMode = true; // testing
+  eeErase(0, 32000);
+  dumpEEPROM(0, 32000);
+  */
+
+  // dump for testing
+  dumpEEPROM(1024, 4096);
+
+  isConfigMode = !digitalRead(PIN_CONFIG_MODE);
+  // isConfigMode = true; // testing
   if (isConfigMode) {
     DBG_PRINTLN(F("!!! CONFIG MODE"));
     initializeWifi();

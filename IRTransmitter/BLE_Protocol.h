@@ -31,4 +31,6 @@
 #define DVD_VOL_DOWN (54u)
 #define DVD_VOL_MUTE (55u)
 
+#define WAIT_3 (255u)
+
 #endif BLE_Protocol_hk
