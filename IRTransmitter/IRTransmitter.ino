@@ -26,7 +26,7 @@
 #define PIN_IR_SEND 9     // connect it out of IR emitter led
 #define PIN_IR_RECEIVE 10 // connect to pin 1 of TSO32338
 #define PIN_CONFIG_MODE 6 // connect to switch and ground
-#define PIN_STATUS_LED A3 // connect to blue
+#define PIN_STATUS_LED A3 // connect to blue of RGB LED
 
 #define BLINK_INTERVAL_SHORT 500 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
