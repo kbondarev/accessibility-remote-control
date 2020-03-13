@@ -1,8 +1,6 @@
 // TODO HANDLE CONFIG MODE - WEB SERVER
-// TODO ADD BLE PROTOCOL CODES
 // TODO CONFIG MODE - ADD "WAIT 3 SECOND"/"WAIT 5 SECONDS" AS A COMMAND SEQUENCE
 // TODO SAVE CONFIG TO EEPROM / LOAD CONFIG FROM EEPROM
-// TODO CHANGE TUNE
 
 #include <ArduinoBLE.h>
 
@@ -174,15 +172,20 @@ void blinkStatusLED()
   }
 }
 
+// E4 G4 E5 C5 D5 G5
 void playTune()
 {
-  tone(PIN_BUZZER, 1000);
-  delay(300);
-  tone(PIN_BUZZER, 1200);
+  tone(PIN_BUZZER, 329); // E4
   delay(200);
-  tone(PIN_BUZZER, 1500);
+  tone(PIN_BUZZER, 392); // G4
   delay(200);
-  tone(PIN_BUZZER, 1000);
-  delay(400);
+  tone(PIN_BUZZER, 698); // E5
+  delay(200);
+  tone(PIN_BUZZER, 523); // C5
+  delay(200);
+  tone(PIN_BUZZER, 523); // D5
+  delay(200);
+  tone(PIN_BUZZER, 784); // G5
+  delay(200);
   noTone(PIN_BUZZER);
 }
