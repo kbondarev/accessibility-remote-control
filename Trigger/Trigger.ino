@@ -1,4 +1,3 @@
-// TODO PIN MACROS
 // TODO HANDLE CONFIG MODE - WEB SERVER
 // TODO ADD BLE PROTOCOL CODES
 // TODO CONFIG MODE - ADD "WAIT 3 SECOND"/"WAIT 5 SECONDS" AS A COMMAND SEQUENCE
@@ -11,7 +10,7 @@
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 
-#define DEBUG  0
+#define DEBUG  1
 
 #if DEBUG
 #	define DBG_PRINT(...)    Serial.print(__VA_ARGS__)
@@ -21,19 +20,23 @@
 #	define DBG_PRINTLN(...)
 #endif
 
-// status LED should be flashing when not connected to peripheral device
-// and on when connected
-const int statusLedPin = LED_BUILTIN;
-const int buttonPin = 2;
-const int buzzerPin = 9;
+#define PIN_BUTTON 7
+#define PIN_BUZZER 9
+#define PIN_CONFIG_MODE 6
+// #define PIN_STATUS_LED A3  // connect to blue of RGB pin
+#define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
+
+#define BLINK_INTERVAL_SHORT 500 // milliseconds
+#define BLINK_INTERVAL_LONG 1500 // milliseconds
+
+// #define BUTTON_DEBOUNCE_TIME 5000 // debounce and avoid spamming signals
+#define BUTTON_DEBOUNCE_TIME 100 // TODO change back to 5 seconds ^
 
 int oldBtnState = LOW;
 long lastTimePushed = 0;
-const int pushInterval = 2000; // 2 seconds
 
 int statusLedState = LOW;
-long statusLedMillis = 0;
-const int statusLedInterval = 500;
+long statusLEDPrevMillis = 0; // last time LED was toggled
 
 void setup()
 {
@@ -43,10 +46,7 @@ void setup()
   DBG_PRINTLN(F("---------------------------------------"));
   DBG_PRINTLN();
 
-  pinMode(buttonPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(statusLedPin, OUTPUT);
-  // initialize the BLE hardware
+    // initialize the BLE hardware
   BLE.begin();
   // start scanning for peripherals
   BLE.scanForUuid(BLE_SERVICE_UUID);
@@ -123,13 +123,11 @@ void controlLed(BLEDevice peripheral)
   int isConnected = -1;
   while (peripheral.connected()) {
     // while the peripheral is connected
-    if (isConnected == -1) {
-      isConnected = 1;
-      digitalWrite(statusLedPin, HIGH);
+    isConnected = 1;
     }
 
     long now = millis();
-    int newBtnState = digitalRead(buttonPin);
+    int newBtnState = digitalRead(PIN_BUTTON);
     if (newBtnState == HIGH && oldBtnState != newBtnState &&
         (now - lastTimePushed > pushInterval)) {
       DBG_PRINTLN(">>> Button pushed");
@@ -148,7 +146,7 @@ void controlLed(BLEDevice peripheral)
 void testButton()
 {
   long now = millis();
-  int newBtnState = digitalRead(buttonPin);
+  int newBtnState = digitalRead(PIN_BUTTON);
   if (newBtnState == HIGH && oldBtnState != newBtnState &&
       (now - lastTimePushed > pushInterval)) {
     DBG_PRINTLN(">>> Button pushed");
@@ -162,13 +160,13 @@ void testButton()
 void blinkStatusLED()
 {
   int now = millis();
-  if (now - statusLedMillis > statusLedInterval) {
+  if (now - statusLedMillis > BLINK_INTERVAL_SHORT) {
     statusLedMillis = now;
     if (statusLedState == HIGH) {
-      digitalWrite(statusLedPin, LOW);
+      digitalWrite(PIN_STATUS_LED, LOW);
       statusLedState = LOW;
     } else {
-      digitalWrite(statusLedPin, HIGH);
+      digitalWrite(PIN_STATUS_LED, HIGH);
       statusLedState = HIGH;
     }
   }
@@ -176,13 +174,13 @@ void blinkStatusLED()
 
 void playTune()
 {
-  tone(buzzerPin, 1000);
+  tone(PIN_BUZZER, 1000);
   delay(300);
-  tone(buzzerPin, 1200);
+  tone(PIN_BUZZER, 1200);
   delay(200);
-  tone(buzzerPin, 1500);
+  tone(PIN_BUZZER, 1500);
   delay(200);
-  tone(buzzerPin, 1000);
+  tone(PIN_BUZZER, 1000);
   delay(400);
-  noTone(buzzerPin);
+  noTone(PIN_BUZZER);
 }

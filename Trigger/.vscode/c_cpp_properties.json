@@ -8,7 +8,7 @@
         "/usr/share/arduino/hardware/arduino/avr/**",
         "/usr/share/arduino/libraries/**",
         "/home/${USER}/Arduino/libraries/**",
-        "${workspaceFolder}/libs/**"
+        "${workspaceFolder}"
       ],
       "forcedInclude": [
         "/usr/share/arduino/hardware/arduino/avr/cores/arduino/Arduino.h"
