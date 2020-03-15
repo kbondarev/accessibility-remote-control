@@ -11,7 +11,7 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define PRINT_DEBUG 1
+#define PRINT_DEBUG 0
 
 #if PRINT_DEBUG
 #define DBG_PRINT(...) Serial.print(__VA_ARGS__)
@@ -20,6 +20,7 @@
 #else
 #define DBG_PRINT(...)
 #define DBG_PRINTLN(...)
+#define DBG_WRITE(...)
 #endif
 
 #define BLE_PERIPHERAL_NAME "IRTx"
@@ -31,8 +32,8 @@
 #define PIN_BUTTON 7
 #define PIN_BUZZER 9
 #define PIN_CONFIG_MODE 6
-// #define PIN_STATUS_LED A3  // connect to blue of RGB pin
-#define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
+#define PIN_STATUS_LED A3  // connect to blue of RGB pin
+// #define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
 
 #define BLINK_INTERVAL_SHORT 500 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
@@ -59,8 +60,6 @@ long statusLEDPrevMillis = 0; // last time LED was toggled
 
 int isConfigMode = 0;
 
-
-#if PRINT_DEBUG
 // dump eeprom contents, 16 bytes at a time.
 // always dumps a multiple of 16 bytes.
 void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
@@ -100,7 +99,6 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
     DBG_PRINTLN(F(""));
   }
 }
-#endif
 
 void initializeWifi()
 {
@@ -365,7 +363,7 @@ void setup()
   DBG_PRINTLN(F("---------------------------------------"));
   DBG_PRINTLN();
 
-  pinMode(PIN_BUTTON, INPUT);
+  pinMode(PIN_BUTTON, INPUT_PULLUP); // TODO remove pullup
   pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
   pinMode(PIN_STATUS_LED, OUTPUT);
   pinMode(PIN_BUZZER, OUTPUT);
@@ -382,12 +380,12 @@ void setup()
   // DELETE AND DUMP ALL EEPROM
   // DO THIS ONLY ONCE WHEN CONNECTING A NEW EEPROM CHIP
 
-  eeErase(0, 32000);
-  dumpEEPROM(0, 32000);
+  // eeErase(0, 32000);
+  // dumpEEPROM(0, 32000);
   */
 
   // dump for testing
-  dumpEEPROM(1000, 5000); // TODO remove
+  dumpEEPROM(0, 4096); // TODO remove
 
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
