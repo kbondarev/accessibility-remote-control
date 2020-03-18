@@ -23,7 +23,7 @@
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 
-#define WIFI_SSID "ARB: IR Emitter"
+#define WIFI_SSID "IR-Emitter"
 
 #define PIN_IR_SEND 2     // connect it out of IR emitter led
 #define PIN_IR_RECEIVE 3  // connect to pin 1 of TSO32338
@@ -665,7 +665,7 @@ void setup()
   }
 #endif
 
-  DBG_PRINTLN(F("------------ IR Transmitter ------------"));
+  DBG_PRINTLN(F("------------ IR Emitter ------------"));
   DBG_PRINTLN(F("----------------------------------------"));
   DBG_PRINTLN();
 
