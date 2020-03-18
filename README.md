@@ -10,7 +10,7 @@ This project contains the source code for Arduino MKR 1010 boards:
 
 - [IRremote](https://github.com/z3t0/Arduino-IRremote) - library that helps to send/receive infrared signal 
 - [WiFiNINA](https://www.arduino.cc/en/Reference/WiFiNINA) - library to control the WiFi and BLE chips on the MKR1010
-- [extEEPROM](https://github.com/PaoloP74/extEEPROM) - library to help write configuration to an expernal EEPROM chip
+- [spieeprom](https://github.com/kbondare/spieeprom) - library to help write configuration to an expernal EEPROM chip over SPI
 
 # MKR1010 Board Pinout
 
