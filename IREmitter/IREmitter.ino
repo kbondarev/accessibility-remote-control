@@ -2,7 +2,6 @@
 #include <IRremote.h>
 #include <SPI.h>
 #include <WiFiNINA.h>
-#include <Wire.h>
 #include <spieeprom.h>
 
 #include "BLE_Protocol.h"
