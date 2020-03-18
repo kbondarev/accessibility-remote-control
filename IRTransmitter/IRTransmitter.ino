@@ -470,7 +470,7 @@ void eeReadIRCode(uint32_t codeId, uint32_t irCode[], uint32_t *codeSize)
   // were each 4 consecutive bytes are one uint32_t element of the IR code
   // array.
   const uint32_t dataSizeAddress = codeId * 1024 + 3;
-  *codeSize = (uint32_t)eep.read_byte(dataSizeAddress);
+  *codeSize = (uint32_t)eep.readByte(dataSizeAddress);
 
   const uint32_t bytesToRead = (*codeSize * 4);
   const uint32_t dataStartAddress = dataSizeAddress + 1;
@@ -488,7 +488,7 @@ void eeReadIRCode(uint32_t codeId, uint32_t irCode[], uint32_t *codeSize)
   DBG_PRINTLN();
 #endif
 
-  eep.read_byte_array(dataStartAddress, readData, bytesToRead);
+  eep.readByteArray(dataStartAddress, readData, bytesToRead);
 
 #if PRINT_DEBUG
   DBG_PRINTLN(F("READ DATA:"));
@@ -631,7 +631,7 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
   for (uint32_t r = 0; r < nRows; r++) {
     uint8_t d[16] = {0};
     uint32_t a = startAddr + 16 * r;
-    eep.read_byte_array(a, d, 16);
+    eep.readByteArray(a, d, 16);
     DBG_PRINT(F("0x"));
     if (a < 16 * 16 * 16)
       DBG_PRINT(F("0"));
