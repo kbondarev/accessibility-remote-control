@@ -17,6 +17,7 @@
 #else
 #define DBG_PRINT(...)
 #define DBG_PRINTLN(...)
+#define DBG_WRITE(...) 
 #endif
 
 #define BLE_NAME "IRTx"
