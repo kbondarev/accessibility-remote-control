@@ -8,7 +8,7 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define PRINT_DEBUG 1
+#define PRINT_DEBUG 0
 
 #if PRINT_DEBUG
 #define DBG_PRINT(...) Serial.print(__VA_ARGS__)
@@ -703,14 +703,9 @@ void setup()
   }
 }
 
-int printed = 0;
 void loop()
 {
   handleStatusLED();
-  if (!printed) {
-    printed = 1;
-    dumpEEPROM(1024, 1440); // TODO remove
-  }
 
   if (isConfigMode) {
     handleWifiConnections();
