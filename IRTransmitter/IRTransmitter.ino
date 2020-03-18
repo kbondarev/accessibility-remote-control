@@ -3,7 +3,7 @@
 #include <SPI.h>
 #include <WiFiNINA.h>
 #include <Wire.h>
-#include <extEEPROM.h>
+#include <spieeprom.h>
 
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
@@ -25,11 +25,14 @@
 
 #define WIFI_SSID "ARB: IR Emitter"
 
-#define PIN_IR_SEND 9     // connect it out of IR emitter led
-#define PIN_IR_RECEIVE 10 // connect to pin 1 of TSO32338
-#define PIN_CONFIG_MODE 6 // connect to switch and ground
+#define PIN_IR_SEND 2     // connect it out of IR emitter led
+#define PIN_IR_RECEIVE 3  // connect to pin 1 of TSO32338
+#define PIN_CONFIG_MODE 5 // connect to switch and ground
 #define PIN_STATUS_LED A3 // connect to blue of RGB LED
-#define PIN_EEPROM_WP 7 // write protection - if high cannot write to EEPROM
+#define PIN_EEPROM_CS 7
+// #define PIN_EEPROM_MOSI 8
+// #define PIN_EEPROM_SCK 9
+// #define PIN_EEPROM_MISO 10
 
 #define BLINK_INTERVAL_SHORT 500 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
@@ -37,12 +40,7 @@
 #define IR_RECEIVE_TIMEOUT 10000 // 10 seconds
 #define IR_FRQ 38
 
-// Using the 24LC256 chip for EEPROM
-// kbits_256 - Size of EEPROM
-// 1         - Using only one EEPROM chip
-// 64        - page size
-// 0x50      - EEPROM address on I2C
-extEEPROM eep(kbits_256, 1, 64, 0x50);
+SPIEEPROM eep(EEPROM_TYPE_16BIT, PIN_EEPROM_CS);
 
 IRsend irsend(PIN_IR_SEND);
 IRrecv irrecv(PIN_IR_RECEIVE);
@@ -146,9 +144,9 @@ void bleCharWritten(BLEDevice central, BLECharacteristic characteristic)
       }
       DBG_PRINTLN();
 
-      // unsigned int * irCodeSend = (unsigned int*)&irCode;
-      // unsigned int irCodeLengthSend = (unsigned int)irCodeLength;
-      // irsend.sendRaw(irCodeSend, irCodeLengthSend, IR_FRQ);
+      unsigned int * irCodeSend = (unsigned int*)&rawCode;
+      unsigned int irCodeLengthSend = (unsigned int)codeLen;
+      irsend.sendRaw(irCodeSend, irCodeLengthSend, IR_FRQ);
 
       DBG_PRINTLN(F(">>> IR CODE SENT!"));
     }
@@ -425,9 +423,9 @@ void printReadEEPROMChunk(int address, uint8_t data[], uint32_t chunk)
   for (int i = 0; i < chunk; i += 4) {
 
     DBG_PRINT(F(" 0x"));
-    DBG_PRINT(address+i, HEX);
+    DBG_PRINT(address + i, HEX);
     DBG_PRINT(F(" ("));
-    DBG_PRINT(address+i, DEC);
+    DBG_PRINT(address + i, DEC);
     DBG_PRINT(F("):\t"));
 
     if (data[i + 0] < 16) {
@@ -462,84 +460,59 @@ void eeReadIRCode(uint32_t codeId, uint32_t irCode[], uint32_t *codeSize)
   DBG_PRINTLN(F(">>> Reading from EEPROM..."));
   uint32_t msStart = millis();
 
-  byte i2cStat;
+  uint8_t dataSize[4] = {0};
+  uint8_t readData[1020] = {0};
 
-  uint32_t addr = codeId * 1024;
-  // first 4-bytes (integer) is for the data size
-  uint8_t codeSizeBytes[4] = {0};
+  // For each IR code we allocate 1024 bytes in the EEPROM. Hence, the address
+  // of each code is its the codeId times 1024. The first 3 bytes are ignored.
+  // The 4th byte represents the codeSize (number of uint32_t in the IR code
+  // array; max value is 255). The following 1020 bytes represent the IR code,
+  // were each 4 consecutive bytes are one uint32_t element of the IR code
+  // array.
+  const uint32_t dataSizeAddress = codeId * 1024 + 3;
+  *codeSize = (uint32_t)eep.read_byte(dataSizeAddress);
 
-  if (!digitalRead(11)) {
-    DBG_PRINT(F(">>>>>>>> SDA is LOW !!!"));
-  }
+  const uint32_t bytesToRead = (*codeSize * 4);
+  const uint32_t dataStartAddress = dataSizeAddress + 1;
 
-
-  i2cStat = eep.read(addr, codeSizeBytes, 4);
-  if (i2cStat != 0) {
-    DBG_PRINT(F("Failed to read at address "));
-    DBG_PRINT(addr, DEC);
-    DBG_PRINT(F(" REASON="));
-    DBG_PRINTLN(i2cStat, DEC);
-  }
-
-  // Data size would, technically fit only into one byte, so the data size is
-  // in the 4th byte
-  *codeSize = codeSizeBytes[3];
-  uint32_t startAddrData = addr + 4;
-  uint32_t bytesToRead = (*codeSize * 4);
-
-  DBG_PRINT(F("Number of bytes to read: "));
-  DBG_PRINTLN(bytesToRead);
+#if PRINT_DEBUG
+  DBG_PRINT(F("Address: "));
+  DBG_PRINTLN(dataSizeAddress);
+  DBG_PRINT(F("Data starts at: "));
+  DBG_PRINTLN(dataStartAddress);
+  DBG_PRINTLN();
   DBG_PRINT(F("Code size: "));
   DBG_PRINTLN(*codeSize);
-  DBG_PRINT(F("Address: "));
-  DBG_PRINTLN(addr);
-  DBG_PRINT(F("Data starts at: "));
-  DBG_PRINTLN(startAddrData);
+  DBG_PRINT(F("Number of bytes to read: "));
+  DBG_PRINTLN(bytesToRead);
   DBG_PRINTLN();
-#if PRINT_DEBUG
-  printReadEEPROMChunk(addr, codeSizeBytes, 4);
 #endif
-  DBG_PRINTLN();
 
-  const uint32_t chunk = bytesToRead;
-  uint32_t k = 0;
-  for (uint32_t i = startAddrData; i < (startAddrData + bytesToRead);
-       i += chunk) {
-    uint8_t data[chunk] = {0};
-    // memset(data, 0, 4);
-
-    i2cStat = eep.read(i, data, chunk);
-    if (i2cStat != 0) {
-      DBG_PRINT(F("Failed to read at address "));
-      DBG_PRINT(i, DEC);
-      DBG_PRINT(F(" REASON="));
-      DBG_PRINTLN(i2cStat, DEC);
-    }
+  eep.read_byte_array(dataStartAddress, readData, bytesToRead);
 
 #if PRINT_DEBUG
-    printReadEEPROMChunk(i, data, chunk);
+  DBG_PRINTLN(F("READ DATA:"));
+  printReadEEPROMChunk(dataStartAddress, readData, bytesToRead);
+  DBG_PRINTLN();
+#endif
+
+  int k = 0; // irCode counter
+  for (int i = 0; i < bytesToRead; i += 4) {
+    // merge 4 bytes into one integer
+    irCode[k] = ((uint32_t)readData[i + 0] << 24) +
+                ((uint32_t)readData[i + 1] << 16) +
+                ((uint32_t)readData[i + 2] << 8) + ((uint32_t)readData[i + 3]);
+
+    DBG_PRINT(k);
+    DBG_PRINT(F("\t0x"));
+    DBG_PRINT(irCode[k], HEX);
+    DBG_PRINT(F(" ("));
+    DBG_PRINT(irCode[k], DEC);
+    DBG_PRINT(F(")"));
     DBG_PRINTLN();
-#endif
 
-    // parse chunk into the irCode integer array
-    for (int j = 0; j < chunk; j += 4) {
-      // add the 4 bytes to construct one uint32_t:
-      irCode[k] = ((uint32_t)data[j + 0] << 24) +
-                  ((uint32_t)data[j + 1] << 16) + ((uint32_t)data[j + 2] << 8) +
-                  ((uint32_t)data[j + 3]);
-      
-      DBG_PRINT(F("\t| =0x"));
-      DBG_PRINT(irCode[k], HEX);
-      DBG_PRINT(F(" ("));
-      DBG_PRINT(irCode[k], DEC);
-      DBG_PRINT(F(")"));
-      DBG_PRINTLN();
-
-      k++;
-    } // for loop -> j
-
-    delay(1000);
-  } // for loop -> i
+    k++;
+  }
 
   uint32_t msLapse = millis() - msStart;
   DBG_PRINT(F(">>> Read time: "));
@@ -565,7 +538,7 @@ void eeWriteIRCode(uint32_t codeId, uint32_t irCode[], uint8_t codeSize)
 
   DBG_PRINT(F("Code size: "));
   DBG_PRINTLN(codeSize);
-  DBG_PRINT(F("Number of bytes to write: "));
+  DBG_PRINT(F("Number of data bytes to write: "));
   DBG_PRINTLN(codeSize * 4);
   DBG_PRINT(F("Address: "));
   DBG_PRINTLN(addr);
@@ -574,14 +547,8 @@ void eeWriteIRCode(uint32_t codeId, uint32_t irCode[], uint8_t codeSize)
   DBG_PRINTLN();
 
   // first 4-bytes (integer) is for the data size
-  eep.write(addr + 0, 0);
-  delay(100);
-  eep.write(addr + 1, 0);
-  delay(100);
-  eep.write(addr + 2, 0);
-  delay(100);
-  eep.write(addr + 3, codeSize);
-  delay(100);
+  uint8_t codeSizeData[4] = {0, 0, 0, codeSize};
+  eep.write(addr, codeSizeData, 4);
 
   for (uint32_t i = 0; i < codeSize; i++) {
     // Split each value in the irCode array into 4 bytes.
@@ -625,7 +592,7 @@ void eeWriteIRCode(uint32_t codeId, uint32_t irCode[], uint8_t codeSize)
 // writes 0xFF to eeprom
 void eeErase(uint32_t startAddr, uint32_t endAddr)
 {
-  const uint8_t chunk = 64;
+  const uint8_t chunk = 32; // cannot be higher! 32bytes is the size of the page
   uint8_t data[chunk];
   DBG_PRINTLN(F("Erasing..."));
   for (int i = 0; i < chunk; i++) {
@@ -650,6 +617,7 @@ void eeErase(uint32_t startAddr, uint32_t endAddr)
 // always dumps a multiple of 16 bytes.
 void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
 {
+  DBG_PRINTLN();
   DBG_PRINT(F("EEPROM DUMP 0x"));
   DBG_PRINT(startAddr, HEX);
   DBG_PRINT(F(" 0x"));
@@ -663,11 +631,7 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
   for (uint32_t r = 0; r < nRows; r++) {
     uint8_t d[16] = {0};
     uint32_t a = startAddr + 16 * r;
-    byte i2cStat = eep.read(a, d, 16);
-    if (i2cStat != 0) {
-      DBG_PRINT(F("Failed to read next line (16 bytes)! Reason: "));
-      DBG_PRINTLN(i2cStat);
-    }
+    eep.read_byte_array(a, d, 16);
     DBG_PRINT(F("0x"));
     if (a < 16 * 16 * 16)
       DBG_PRINT(F("0"));
@@ -706,17 +670,9 @@ void setup()
   DBG_PRINTLN();
 
   pinMode(PIN_STATUS_LED, OUTPUT);
-  pinMode(PIN_EEPROM_WP, OUTPUT);
-  pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
+  pinMode(PIN_CONFIG_MODE, INPUT);
 
-  // init EEPROM
-  byte i2cStat = eep.begin(eep.twiClock100kHz);
-  if (i2cStat != 0) {
-    DBG_PRINTLN(F("Failed to connect to external EEPROM!"));
-  } else {
-    DBG_PRINTLN(F("Initilized external EEPROM successfully"));
-  }
-
+  eep.setup();
   /*
   // DELETE AND DUMP ALL EEPROM
   // DO THIS ONLY ONCE WHEN CONNECTING A NEW EEPROM CHIP
@@ -733,17 +689,15 @@ void setup()
   // uint32_t codeSize = 0;
   // eeReadIRCode(1, irCode, &codeSize);
 
-  isConfigMode = !digitalRead(PIN_CONFIG_MODE);
+  isConfigMode = digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
   if (isConfigMode) {
     DBG_PRINTLN(F("!!! CONFIG MODE"));
-    digitalWrite(PIN_EEPROM_WP, LOW); // disable write protection
     initializeWifi();
     printWifiStatus();
     irrecv.enableIRIn();
   } else {
     DBG_PRINTLN(F("!!! OPERATION MODE"));
-    digitalWrite(PIN_EEPROM_WP, HIGH); // enable write protection
     initializeBLE();
     printBLEStatus();
   }

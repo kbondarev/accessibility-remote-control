@@ -14,6 +14,7 @@
                     "/usr/share/arduino/hardware/arduino/avr/libraries/",
                     "/home/kiro/.arduino15/packages/arduino/hardware/samd/1.8.5/cores/arduino/",
                     "/usr/share/arduino/libraries/**",
+                    "/home/kiro/Arduino/libraries/**",
                     "${workspaceRoot}"
                 ]
             },
