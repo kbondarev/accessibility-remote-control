@@ -27,7 +27,7 @@
 #define BLE_SERVICE_UUID "5C7D66C6-FC51-4A49-9D91-8C6439AEBA56"
 #define BLE_CHAR "1010"
 
-#define WIFI_SSID "Button"
+#define WIFI_SSID "Button Config"
 
 #define PIN_BUTTON 2
 #define PIN_BUZZER 3
