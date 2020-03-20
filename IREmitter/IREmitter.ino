@@ -34,7 +34,7 @@
 // #define PIN_EEPROM_SCK 9
 // #define PIN_EEPROM_MISO 10
 
-#define BLINK_INTERVAL_SHORT 500 // milliseconds
+#define BLINK_INTERVAL_SHORT 180 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
 
 #define IR_RECEIVE_TIMEOUT 10000 // 10 seconds

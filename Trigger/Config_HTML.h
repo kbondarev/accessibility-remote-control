@@ -97,7 +97,7 @@
       renderCommands();\n\r\
     }\n\r\
     function clickedSave() {\n\r\
-      \n\r\
+      doGET();\n\r\
     }\n\r\
     function clickedUp(index) {\n\r\
       console.log('up: index=', index);\n\r\
@@ -118,8 +118,13 @@
       renderCommands();\n\r\
     }\n\r\
     function doGET() {\n\r\
+      let list = [];\n\r\
+      commands.forEach(c => {\n\r\
+        list.push(c[0]);\n\r\
+      });\n\r\
+      console.log('list: ', list);\n\r\
       var xhr = new XMLHttpRequest();\n\r\
-      xhr.open('GET', './c?=' + commands.join(','));\n\r\
+      xhr.open('GET', './c?=' + list.join(',') + ',');\n\r\
       xhr.setRequestHeader('Content-Type', 'text/plain');\n\r\
       xhr.onload = function() {\n\r\
         if (xhr.status === 200) {\n\r\

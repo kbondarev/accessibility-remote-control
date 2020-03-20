@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <WiFiNINA.h>
 #include <spieeprom.h>
+#include <string.h>
 
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
@@ -28,14 +29,14 @@
 
 #define WIFI_SSID "Button"
 
-#define PIN_BUTTON 7
-#define PIN_BUZZER 9
-#define PIN_CONFIG_MODE 6
+#define PIN_BUTTON 2
+#define PIN_BUZZER 3
+#define PIN_CONFIG_MODE 5
 #define PIN_STATUS_LED A3 // connect to blue of RGB pin
 // #define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
-#define PIN_EEPROM_CS 10
+#define PIN_EEPROM_CS 7
 
-#define BLINK_INTERVAL_SHORT 500 // milliseconds
+#define BLINK_INTERVAL_SHORT 180 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
 
 // #define BUTTON_DEBOUNCE_TIME 5000 // debounce and avoid spamming signals
@@ -57,14 +58,13 @@ uint8_t statusLEDStep = 5; // -5 or 5
 
 int isConfigMode = 0;
 
-
 void eeReadCommands(uint8_t commands[], uint8_t *length)
 {
   DBG_PRINTLN(F(">>> Reading from EEPROM..."));
   uint32_t msStart = millis();
 
   *length = eep.readByte(0);
-  
+
   if (*length > 0 && *length != 0xFF) {
     eep.readByteArray(1, commands, *length);
   }
@@ -84,7 +84,6 @@ void eeWriteCommands(uint8_t commands[], uint8_t length)
 {
   DBG_PRINTLN(F(">>> Writing to EEPROM..."));
   uint32_t msStart = millis();
-
 
   DBG_PRINT(F("Commands size: "));
   DBG_PRINTLN(length);
@@ -214,6 +213,30 @@ void sendHttpResponse(int statusCode, WiFiClient client)
   client.println();
 }
 
+void parseCommands(String line, uint8_t commands[], uint8_t *len)
+{
+  String substr = line.substring(line.indexOf('=') + 1, line.lastIndexOf(" "));
+  // DBG_PRINTLN(substr);
+  char str[substr.length()];
+  substr.toCharArray(str, substr.length());
+
+  // Extract the first token
+  char *token = strtok(str, ",");
+  commands[0] = atoi(token);
+  // loop through the string to extract all other tokens
+  int i = 1;
+  while (token != NULL) {
+    // DBG_PRINTLN(token); // printing each token
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+      commands[i] = atoi(token);
+      i++;
+    }
+  }
+
+  *len = i;
+}
+
 void handleWifiConnections()
 {
 #if PRINT_DEBUG
@@ -265,16 +288,28 @@ void handleWifiConnections()
         currentLine += c;     // add it to the end of the currentLine
       }
 
-      if (currentLine.endsWith("HTTP/")) {
+      if (currentLine.endsWith("HTTP/") && currentLine.indexOf("c?=") > 0) {
         // The currentLine string was filled with path part of the first line
         // of the http request.
         // First line of HTTP looks like this:
         //      "GET /path/to/things HTTP/1.1"
         //
         // All commands are sent to path as a parameter list:
-        //      "GET /?c=1,2,3,4,5,6
+        //      "GET /c?=1,2,3,4,5,6,
 
-        // TODO get list of commands
+        uint8_t commands[128] = {0}; // there will be no more than 128 commands
+        uint8_t commandsLength = 0;
+
+        parseCommands(currentLine, commands, &commandsLength);
+
+        eeWriteCommands(commands, commandsLength);
+
+#if PRINT_DEBUG
+        DBG_PRINTLN("\n\rSAVED COMMANDS:");
+        for (int i = 0; i < commandsLength; i++) {
+          DBG_PRINTLN(commands[i]);
+        }
+#endif
       }
     } // end while connected
 
@@ -323,7 +358,6 @@ void handleStatusLED()
   }
 }
 
-
 void playTune()
 {
   tone(PIN_BUZZER, 587);
@@ -349,22 +383,20 @@ void handleBLECommunications(BLEDevice peripheral,
     if (newBtnState == HIGH && oldBtnState == LOW &&
         (now - lastTimePushed > BUTTON_DEBOUNCE_TIME)) {
       DBG_PRINTLN(">>> Button pushed");
+      playTune();
 
       uint8_t commands[128] = {0};
       uint8_t length = 0;
       eeReadCommands(commands, &length);
-
-      for (int i = 0; i < length; i++)
-      {
+      
+      for (int i = 0; i < length; i++) {
         DBG_PRINT(F("Sending command: "));
         DBG_PRINTLN(commands[i]);
 
-        characteristic.writeValue(commands[i]);  
+        characteristic.writeValue(commands[i]);
         delay(1); // wait until value is read
       }
-      
-      playTune();
-      
+
       lastTimePushed = now;
     }
     oldBtnState = newBtnState;
@@ -457,7 +489,11 @@ void setup()
 
   // init EEPROM
   eep.setup();
-  
+
+#if PRINT_DEBUG
+  dumpEEPROM(0, 128);
+#endif
+
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
   if (isConfigMode) {
