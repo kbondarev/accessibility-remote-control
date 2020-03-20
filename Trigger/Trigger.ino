@@ -31,7 +31,7 @@
 
 #define PIN_BUTTON 2
 #define PIN_BUZZER 3
-#define PIN_CONFIG_MODE 5
+#define PIN_CONFIG_MODE 5 // pullup - connect to switch and ground (w/ resistor)
 #define PIN_STATUS_LED A3 // connect to blue of RGB pin
 // #define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
 #define PIN_EEPROM_CS 7

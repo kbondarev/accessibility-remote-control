@@ -27,7 +27,7 @@
 
 #define PIN_IR_SEND 2     // connect it out of IR emitter led
 #define PIN_IR_RECEIVE 3  // connect to pin 1 of TSO32338
-#define PIN_CONFIG_MODE 5 // connect to switch and ground
+#define PIN_CONFIG_MODE 5 // pullup - connect to switch and ground (w/ resistor)
 #define PIN_STATUS_LED A3 // connect to blue of RGB LED
 #define PIN_EEPROM_CS 7
 // #define PIN_EEPROM_MOSI 8
@@ -670,7 +670,7 @@ void setup()
   DBG_PRINTLN();
 
   pinMode(PIN_STATUS_LED, OUTPUT);
-  pinMode(PIN_CONFIG_MODE, INPUT);
+  pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
 
   eep.setup();
   /*
@@ -689,7 +689,7 @@ void setup()
   // uint32_t codeSize = 0;
   // eeReadIRCode(1, irCode, &codeSize);
 
-  isConfigMode = digitalRead(PIN_CONFIG_MODE);
+  isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
   if (isConfigMode) {
     DBG_PRINTLN(F("!!! CONFIG MODE"));
