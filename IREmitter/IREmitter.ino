@@ -7,7 +7,7 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define PRINT_DEBUG 1
+#define PRINT_DEBUG 0
 
 #if PRINT_DEBUG
 #define DBG_PRINT(...) Serial.print(__VA_ARGS__)
