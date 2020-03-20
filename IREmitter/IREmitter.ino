@@ -7,7 +7,7 @@
 #include "BLE_Protocol.h"
 #include "Config_HTML.h"
 
-#define PRINT_DEBUG 0
+#define PRINT_DEBUG 1
 
 #if PRINT_DEBUG
 #define DBG_PRINT(...) Serial.print(__VA_ARGS__)
@@ -30,9 +30,6 @@
 #define PIN_CONFIG_MODE 5 // pullup - connect to switch and ground (w/ resistor)
 #define PIN_STATUS_LED A3 // connect to blue of RGB LED
 #define PIN_EEPROM_CS 7
-// #define PIN_EEPROM_MOSI 8
-// #define PIN_EEPROM_SCK 9
-// #define PIN_EEPROM_MISO 10
 
 #define BLINK_INTERVAL_SHORT 180 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
@@ -144,7 +141,7 @@ void bleCharWritten(BLEDevice central, BLECharacteristic characteristic)
       }
       DBG_PRINTLN();
 
-      unsigned int * irCodeSend = (unsigned int*)&rawCode;
+      unsigned int *irCodeSend = (unsigned int *)&rawCode;
       unsigned int irCodeLengthSend = (unsigned int)codeLen;
       irsend.sendRaw(irCodeSend, irCodeLengthSend, IR_FRQ);
 
@@ -332,7 +329,6 @@ void handleWifiConnections()
             if (receivedIRCode) {
               sendHttpResponse(200, client);
 #if PRINT_DEBUG
-              // delay(60000 * 2);
               dumpEEPROM(codeId * 1024, 512);
 #endif
               break;
@@ -673,31 +669,21 @@ void setup()
   pinMode(PIN_CONFIG_MODE, INPUT_PULLUP);
 
   eep.setup();
-  /*
-  // DELETE AND DUMP ALL EEPROM
-  // DO THIS ONLY ONCE WHEN CONNECTING A NEW EEPROM CHIP
-  eeErase(0, 32000);
-  dumpEEPROM(0, 32000);
-  */
 
-  //  eeErase(0, 2048);
-
-  // dump for testing
-  // dumpEEPROM(1024, 1440); // TODO remove
-
-  // uint32_t irCode[255] = {0};
-  // uint32_t codeSize = 0;
-  // eeReadIRCode(1, irCode, &codeSize);
+// dump for testing
+#if PRINT_DEBUG
+  dumpEEPROM(1024 * 41, 512);
+#endif
 
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
   if (isConfigMode) {
-    DBG_PRINTLN(F("!!! CONFIG MODE"));
+    DBG_PRINTLN(F(">>> CONFIG MODE"));
     initializeWifi();
     printWifiStatus();
     irrecv.enableIRIn();
   } else {
-    DBG_PRINTLN(F("!!! OPERATION MODE"));
+    DBG_PRINTLN(F(">>> OPERATION MODE"));
     initializeBLE();
     printBLEStatus();
   }

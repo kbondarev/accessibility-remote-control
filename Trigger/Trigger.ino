@@ -1,7 +1,3 @@
-// TODO HANDLE CONFIG MODE - WEB SERVER
-// TODO CONFIG MODE - ADD "WAIT 3 SECOND"/"WAIT 5 SECONDS" AS A COMMAND SEQUENCE
-// TODO SAVE CONFIG TO EEPROM / LOAD CONFIG FROM EEPROM
-
 #include <ArduinoBLE.h>
 #include <SPI.h>
 #include <WiFiNINA.h>
@@ -33,14 +29,13 @@
 #define PIN_BUZZER 3
 #define PIN_CONFIG_MODE 5 // pullup - connect to switch and ground (w/ resistor)
 #define PIN_STATUS_LED A3 // connect to blue of RGB pin
-// #define PIN_STATUS_LED LED_BUILTIN // TODO change RGB pin ^
 #define PIN_EEPROM_CS 7
 
 #define BLINK_INTERVAL_SHORT 180 // milliseconds
 #define BLINK_INTERVAL_LONG 1500 // milliseconds
 
 // #define BUTTON_DEBOUNCE_TIME 5000 // debounce and avoid spamming signals
-#define BUTTON_DEBOUNCE_TIME 100 // TODO change back to 5 seconds ^
+#define BUTTON_DEBOUNCE_TIME 500
 
 SPIEEPROM eep(EEPROM_TYPE_16BIT, PIN_EEPROM_CS);
 
@@ -497,11 +492,11 @@ void setup()
   isConfigMode = !digitalRead(PIN_CONFIG_MODE);
   // isConfigMode = true; // testing
   if (isConfigMode) {
-    DBG_PRINTLN(F("!!! CONFIG MODE"));
+    DBG_PRINTLN(F(">>> CONFIG MODE"));
     initializeWifi();
     printWifiStatus();
   } else {
-    DBG_PRINTLN(F("!!! OPERATION MODE"));
+    DBG_PRINTLN(F(">>> OPERATION MODE"));
     // initialize the BLE hardware and start scanning
     BLE.begin();
     BLE.scanForUuid(BLE_SERVICE_UUID);
