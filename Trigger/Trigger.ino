@@ -314,18 +314,18 @@ void handleWifiConnections()
   } // end if client
 } // end handleWifiConnections
 
-void testButton()
-{
-  long now = millis();
-  int newBtnState = digitalRead(PIN_BUTTON);
-  if (newBtnState == HIGH && oldBtnState != newBtnState &&
-      (now - lastTimePushed > BUTTON_DEBOUNCE_TIME)) {
-    DBG_PRINTLN(">>>TEST: Button pushed!");
-    playTune();
-    lastTimePushed = now;
-  }
-  oldBtnState = newBtnState;
-}
+// void testButton()
+// {
+//   long now = millis();
+//   int newBtnState = digitalRead(PIN_BUTTON);
+//   if (newBtnState == HIGH && oldBtnState != newBtnState &&
+//       (now - lastTimePushed > BUTTON_DEBOUNCE_TIME)) {
+//     DBG_PRINTLN(">>>TEST: Button pushed!");
+//     playStartTune();
+//     lastTimePushed = now;
+//   }
+//   oldBtnState = newBtnState;
+// }
 
 void toggleStatusLEDState(int interval)
 {
@@ -353,14 +353,27 @@ void handleStatusLED()
   }
 }
 
-void playTune()
+// tune to play over the speaker when transmision is complete
+void playCompleteTune()
 {
-  tone(PIN_BUZZER, 587);
-  delay(220);
+  tone(PIN_BUZZER, 1046);
+  delay(200);
   tone(PIN_BUZZER, 784);
   delay(220);
+  tone(PIN_BUZZER, 587);
+  delay(450);
+  noTone(PIN_BUZZER);
+}
+
+// tune to play over the speaker when begining the transmision
+void playStartTune()
+{
+  tone(PIN_BUZZER, 784);
+  delay(250);
+  noTone(PIN_BUZZER);
+  delay(200);
   tone(PIN_BUZZER, 1046);
-  delay(300);
+  delay(800);
   noTone(PIN_BUZZER);
 }
 
@@ -378,12 +391,12 @@ void handleBLECommunications(BLEDevice peripheral,
     if (newBtnState == HIGH && oldBtnState == LOW &&
         (now - lastTimePushed > BUTTON_DEBOUNCE_TIME)) {
       DBG_PRINTLN(">>> Button pushed");
-      playTune();
+      playStartTune();
 
       uint8_t commands[128] = {0};
       uint8_t length = 0;
       eeReadCommands(commands, &length);
-      
+
       for (int i = 0; i < length; i++) {
         DBG_PRINT(F("Sending command: "));
         DBG_PRINTLN(commands[i]);
@@ -391,6 +404,8 @@ void handleBLECommunications(BLEDevice peripheral,
         characteristic.writeValue(commands[i]);
         delay(1); // wait until value is read
       }
+
+      playCompleteTune();
 
       lastTimePushed = now;
     }
@@ -465,9 +480,10 @@ void scanAndConnectToEmitterDevice()
 
 void setup()
 {
-  Serial.begin(9600);
-
+  
 #if PRINT_DEBUG
+  delay(5000);
+  Serial.begin(9600);
   while (!Serial) {
     ;
   }
