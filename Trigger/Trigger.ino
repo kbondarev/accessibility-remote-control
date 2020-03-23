@@ -314,19 +314,6 @@ void handleWifiConnections()
   } // end if client
 } // end handleWifiConnections
 
-// void testButton()
-// {
-//   long now = millis();
-//   int newBtnState = digitalRead(PIN_BUTTON);
-//   if (newBtnState == HIGH && oldBtnState != newBtnState &&
-//       (now - lastTimePushed > BUTTON_DEBOUNCE_TIME)) {
-//     DBG_PRINTLN(">>>TEST: Button pushed!");
-//     playStartTune();
-//     lastTimePushed = now;
-//   }
-//   oldBtnState = newBtnState;
-// }
-
 void toggleStatusLEDState(int interval)
 {
   int now = millis();
@@ -522,7 +509,6 @@ void setup()
 void loop()
 {
   handleStatusLED();
-  // testButton();
 
   if (isConfigMode) {
     handleWifiConnections();
