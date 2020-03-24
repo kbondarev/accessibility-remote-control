@@ -133,7 +133,7 @@ void bleCharWritten(BLEDevice central, BLECharacteristic characteristic)
       // send IR Code
       uint32_t rawCode[255] = {0};
       uint32_t codeLen = 0;
-      eeReadIRCode(1, rawCode, &codeLen);
+      eeReadIRCode(cmd, rawCode, &codeLen);
 
       for (int i = 0; i < codeLen; i++) {
         DBG_PRINT(rawCode[i]);
@@ -402,9 +402,10 @@ void handleStatusLED()
     // Status LED should be ON when BLE is connected
     // Status LED should flash/blink quickly when BLE is NOT connected
     if (isCentralConnected) {
-      if (statusLEDState == LOW) {
+      if (statusLEDState == HIGH) {
         // BLE Central got connected, therefore turn the Status LED on
-        statusLEDState = HIGH;
+        // LOW is ON because it's a common anode RGB LED
+        statusLEDState = LOW;
         digitalWrite(PIN_STATUS_LED, statusLEDState);
       }
     } else {
@@ -653,9 +654,10 @@ void dumpEEPROM(uint32_t startAddr, uint32_t nBytes)
 
 void setup()
 {
-  Serial.begin(9600);
 
 #if PRINT_DEBUG
+  delay(5000);
+  Serial.begin(9600);
   while (!Serial) {
     ;
   }
